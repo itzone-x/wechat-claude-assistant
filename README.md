@@ -11,6 +11,98 @@
 - Claude Code 处理代码或分析任务
 - 结果自动回发微信
 
+## 新手 3 分钟上手
+
+如果你是第一次接触这个项目，直接走这条路径，不要先折腾 `channels`。
+
+### 你需要先准备好
+
+- `Claude Code`
+- `Node.js 18+`
+- 一个能正常使用 ClawBot 的微信号
+
+### 第一步：拉代码并安装
+
+```bash
+git clone https://github.com/itzone-x/wechat-claude-assistant.git
+cd wechat-claude-assistant
+npm install
+npm run build
+```
+
+### 第二步：跑安装向导
+
+```bash
+node dist/cli.js install
+```
+
+向导会带你完成：
+
+1. 环境检查
+2. 微信扫码登录
+3. 工作目录设置
+4. 执行策略设置
+5. 自动启动偏好保存
+
+### 第三步：启动 worker
+
+前台运行：
+
+```bash
+node dist/cli.js start
+```
+
+如果你希望它后台常驻：
+
+```bash
+node dist/cli.js start --daemon
+```
+
+### 第一次验证
+
+在微信里给 ClawBot 发：
+
+```text
+/echo 你好
+```
+
+如果收到回复，说明链路已经通了。
+
+### 开始真实使用
+
+直接在微信里发自然语言任务，例如：
+
+```text
+请检查当前项目的 README，告诉我主路径是不是 worker 模式，并简短总结。
+```
+
+也可以直接发：
+
+- 文字
+- 图片
+- 图片 + 文字
+- 图片链接
+- 语音
+- 语音 + 文字
+
+### 常用命令
+
+本地：
+
+```bash
+node dist/cli.js status
+node dist/cli.js stop
+node dist/cli.js service install
+node dist/cli.js doctor
+```
+
+微信里：
+
+- `/echo 你好`
+- `/status`
+- `/reset`
+- `/help`
+
 ## 这是什么
 
 这个项目基于微信官方 ClawBot iLink API，把微信接到本地 Claude Code 上。
