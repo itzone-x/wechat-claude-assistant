@@ -5,7 +5,8 @@ import { delimiter, dirname, join } from 'node:path';
 
 import {
   createConversationSession,
-  getStoredSessionId
+  getStoredSessionId,
+  resetConversationSession
 } from './conversation-store.js';
 import { permissionModeFor } from './policy.js';
 import type {
@@ -27,6 +28,7 @@ const COMMON_CLAUDE_PATHS = [
   '/opt/homebrew/bin/claude'
 ];
 const EMPTY_MCP_CONFIG_JSON = '{"mcpServers":{}}';
+const MISSING_SESSION_PATTERN = /No conversation found with session ID/i;
 
 function isExecutable(path: string): boolean {
   try {
@@ -133,9 +135,6 @@ export class ClaudeCodeRunner implements AgentRunner {
     let child: ChildProcessWithoutNullStreams | null = null;
 
     const completion = (async () => {
-      const storedSessionId = await getStoredSessionId(request.conversationId);
-      const sessionId = storedSessionId
-        ?? await createConversationSession(request.conversationId);
       const prompt = buildClaudeWorkerPrompt({
         workspaceRoot: request.workspaceRoot,
         taskText: request.taskText,
@@ -145,56 +144,85 @@ export class ClaudeCodeRunner implements AgentRunner {
         new Set((request.attachments || []).map((attachment) => dirname(attachment.filePath)))
       );
 
-      const sessionArgs = storedSessionId
-        ? ['--resume', sessionId]
-        : ['--session-id', sessionId];
+      const runClaude = async (
+        sessionId: string,
+        resumeExisting: boolean
+      ): Promise<WorkerRunResult> => {
+        const sessionArgs = resumeExisting
+          ? ['--resume', sessionId]
+          : ['--session-id', sessionId];
 
-      child = spawn(
-        this.command,
-        [
-          ...this.args,
-          '-p',
-          prompt,
-          ...sessionArgs,
-          '--mcp-config',
-          EMPTY_MCP_CONFIG_JSON,
-          '--strict-mcp-config',
-          '--permission-mode',
-          permissionModeFor(request.approvalPolicy),
-          '--add-dir',
-          request.workspaceRoot,
-          ...attachmentDirs.flatMap((dir) => ['--add-dir', dir])
-        ],
-        {
-          cwd: request.workspaceRoot,
-          env: this.env
-        }
-      );
+        child = spawn(
+          this.command,
+          [
+            ...this.args,
+            '-p',
+            prompt,
+            ...sessionArgs,
+            '--mcp-config',
+            EMPTY_MCP_CONFIG_JSON,
+            '--strict-mcp-config',
+            '--permission-mode',
+            permissionModeFor(request.approvalPolicy),
+            '--add-dir',
+            request.workspaceRoot,
+            ...attachmentDirs.flatMap((dir) => ['--add-dir', dir])
+          ],
+          {
+            cwd: request.workspaceRoot,
+            env: this.env
+          }
+        );
+        child.stdin.end();
 
-      return await new Promise<WorkerRunResult>((resolve) => {
-        let stdout = '';
-        let stderr = '';
+        return await new Promise<WorkerRunResult>((resolve) => {
+          let stdout = '';
+          let stderr = '';
 
-        child!.stdout.on('data', (chunk) => {
-          stdout += String(chunk);
-        });
+          child!.stdout.on('data', (chunk) => {
+            stdout += String(chunk);
+          });
 
-        child!.stderr.on('data', (chunk) => {
-          stderr += String(chunk);
-        });
+          child!.stderr.on('data', (chunk) => {
+            stderr += String(chunk);
+          });
 
-        child!.on('error', (error) => {
-          stderr += error.message;
-        });
+          child!.on('error', (error) => {
+            stderr += error.message;
+          });
 
-        child!.on('close', (exitCode) => {
-          resolve({
-            exitCode,
-            stdout: stdout.trim(),
-            stderr: stderr.trim()
+          child!.on('close', (exitCode) => {
+            resolve({
+              exitCode,
+              stdout: stdout.trim(),
+              stderr: stderr.trim()
+            });
           });
         });
-      });
+      };
+
+      const storedSessionId = await getStoredSessionId(
+        request.conversationId,
+        request.workspaceRoot
+      );
+      const sessionId = storedSessionId
+        ?? await createConversationSession(request.conversationId, request.workspaceRoot);
+
+      const firstResult = await runClaude(sessionId, Boolean(storedSessionId));
+      if (
+        storedSessionId &&
+        firstResult.exitCode !== 0 &&
+        MISSING_SESSION_PATTERN.test(`${firstResult.stderr}\n${firstResult.stdout}`)
+      ) {
+        await resetConversationSession(request.conversationId, request.workspaceRoot);
+        const freshSessionId = await createConversationSession(
+          request.conversationId,
+          request.workspaceRoot
+        );
+        return await runClaude(freshSessionId, false);
+      }
+
+      return firstResult;
     })();
 
     return {

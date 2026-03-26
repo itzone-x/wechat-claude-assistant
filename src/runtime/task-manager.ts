@@ -185,7 +185,10 @@ export class TaskManager {
           );
           return;
         }
-        await resetConversationSession(message.fromUserId);
+        await resetConversationSession(
+          message.fromUserId,
+          this.config.workspaceRoot
+        );
         await clearConversationStatus(message.fromUserId);
         await this.safeReply(
           '已重置当前微信会话对应的 Claude 会话，下一个任务会从新上下文开始。',

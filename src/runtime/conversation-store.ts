@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
 
 import { getStatePaths } from '../core/config.js';
 import { readJsonFile, writeJsonFile } from '../core/state.js';
@@ -21,11 +22,19 @@ async function saveConversationStore(store: ConversationStore): Promise<void> {
   await writeJsonFile(getStatePaths().conversationStorePath, store);
 }
 
+function buildConversationStoreKey(
+  conversationId: string,
+  workspaceRoot: string
+): string {
+  return `${resolve(workspaceRoot)}::${conversationId}`;
+}
+
 export async function getStoredSessionId(
-  conversationId: string
+  conversationId: string,
+  workspaceRoot: string
 ): Promise<string | null> {
   const store = await loadConversationStore();
-  const existing = store[conversationId];
+  const existing = store[buildConversationStoreKey(conversationId, workspaceRoot)];
 
   if (existing?.sessionId) {
     existing.updatedAt = new Date().toISOString();
@@ -37,11 +46,12 @@ export async function getStoredSessionId(
 }
 
 export async function createConversationSession(
-  conversationId: string
+  conversationId: string,
+  workspaceRoot: string
 ): Promise<string> {
   const store = await loadConversationStore();
   const sessionId = randomUUID();
-  store[conversationId] = {
+  store[buildConversationStoreKey(conversationId, workspaceRoot)] = {
     sessionId,
     updatedAt: new Date().toISOString()
   };
@@ -49,8 +59,11 @@ export async function createConversationSession(
   return sessionId;
 }
 
-export async function resetConversationSession(conversationId: string): Promise<void> {
+export async function resetConversationSession(
+  conversationId: string,
+  workspaceRoot: string
+): Promise<void> {
   const store = await loadConversationStore();
-  delete store[conversationId];
+  delete store[buildConversationStoreKey(conversationId, workspaceRoot)];
   await saveConversationStore(store);
 }

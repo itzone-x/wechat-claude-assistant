@@ -8,6 +8,10 @@ import test from 'node:test';
 import { buildDoctorGuidance } from '../commands/doctor.js';
 import { getStatePaths } from '../core/config.js';
 import {
+  createConversationSession,
+  getStoredSessionId
+} from '../runtime/conversation-store.js';
+import {
   ClaudeCodeRunner,
   resolveClaudeCommand
 } from '../runtime/claude-code-runner.js';
@@ -140,6 +144,54 @@ test('claude code runner resumes an existing conversation session', async () => 
     const mcpConfigIndex = args.indexOf('--mcp-config');
     assert.ok(mcpConfigIndex >= 0);
     assert.equal(args[mcpConfigIndex + 1], '{"mcpServers":{}}');
+  });
+});
+
+test('conversation sessions are scoped by workspace root', async () => {
+  await withStateDir(async () => {
+    const workspaceA = '/tmp/workspace-a';
+    const workspaceB = '/tmp/workspace-b';
+
+    const sessionId = await createConversationSession('conv-same-user', workspaceA);
+
+    assert.equal(
+      await getStoredSessionId('conv-same-user', workspaceA),
+      sessionId
+    );
+    assert.equal(
+      await getStoredSessionId('conv-same-user', workspaceB),
+      null
+    );
+  });
+});
+
+test('claude code runner retries with a fresh session when resume session is missing', async () => {
+  await withStateDir(async () => {
+    const workspaceRoot = process.cwd();
+    const staleSessionId = await createConversationSession('conv-stale', workspaceRoot);
+    const runner = new ClaudeCodeRunner({
+      command: process.execPath,
+      args: [fixturePath('fake-claude-resume-missing-then-success.mjs')]
+    });
+
+    const run = runner.start({
+      conversationId: 'conv-stale',
+      workspaceRoot,
+      approvalPolicy: 'sensitive_confirmation',
+      taskText: '继续之前的任务'
+    });
+
+    const result = await run.completion;
+    const args = JSON.parse(result.stdout) as string[];
+    const sessionIdIndex = args.indexOf('--session-id');
+    const storedSessionId = await getStoredSessionId('conv-stale', workspaceRoot);
+
+    assert.equal(result.exitCode, 0);
+    assert.ok(sessionIdIndex >= 0);
+    assert.ok(storedSessionId);
+    assert.notEqual(storedSessionId, staleSessionId);
+    assert.equal(args[sessionIdIndex + 1], storedSessionId);
+    assert.equal(args.includes('--resume'), false);
   });
 });
 
