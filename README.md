@@ -94,6 +94,16 @@ node dist/cli.js start --daemon
 
 只有看到终端输出 `worker 模式已启动`，微信里的消息才会收到回复。
 
+如果你改用自动启动服务：
+
+```bash
+node dist/cli.js service install
+node dist/cli.js service status
+node dist/cli.js status
+```
+
+请先确认 `service status` 显示“已加载: 是”，并且 `status` 显示“worker 运行中: 是”，再去微信里发消息。
+
 ### 第一次验证
 
 在微信里给 ClawBot 发：
@@ -215,6 +225,15 @@ node dist/cli.js start --daemon
 ```bash
 node dist/cli.js service install
 ```
+
+安装完后，先验证它真的已经起来：
+
+```bash
+node dist/cli.js service status
+node dist/cli.js status
+```
+
+只有当 `service status` 显示“已加载: 是”，并且 `status` 显示“worker 运行中: 是”，才说明微信消息已经有人在监听。
 
 ## 微信上怎么用
 

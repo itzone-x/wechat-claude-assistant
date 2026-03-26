@@ -54,3 +54,4 @@ All notable changes to this project will be documented in this file.
 - Fixed a daemon/runtime race where an older worker could clear status or PID files after a newer worker had already started.
 - Fixed stale session recovery so the worker automatically drops a missing Claude session and retries with a fresh one instead of failing the user task.
 - Fixed the worker subprocess stdin handling so `claude -p` no longer emits the 3-second “no stdin data received” warning on normal task execution.
+- Fixed launchd worker status detection so `node dist/cli.js status` correctly reports a running service-managed worker when a live PID file is present.
