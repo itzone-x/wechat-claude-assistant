@@ -1,5 +1,5 @@
 {
-  "name": "wechat-claude-holdhands",
+  "name": "wechat-claude-assistant",
   "version": "0.1.0",
   "description": "WeChat bridge for Claude Code worker mode and advanced Channels mode",
   "mcpServers": "./plugin.mcp.json"

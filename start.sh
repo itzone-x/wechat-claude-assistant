@@ -1,7 +1,7 @@
 #!/bin/bash
-# 微信和 Claude 手牵手 - 快速启动脚本
+# 微信 Claude Code 助手 - 快速启动脚本
 
-echo "启动微信和 Claude 手牵手..."
+echo "启动微信 Claude Code 助手..."
 echo ""
 
 cd "$(dirname "$0")"

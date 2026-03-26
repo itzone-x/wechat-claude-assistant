@@ -36,7 +36,7 @@
 
 ### Repository name
 
-`wechat-claude-holdhands`
+`wechat-claude-assistant`
 
 ### Description
 

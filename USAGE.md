@@ -24,7 +24,7 @@
 ## 第一次安装
 
 ```bash
-cd wechat-claude-holdhands
+cd wechat-claude-assistant
 npm install
 npm run build
 node dist/cli.js install

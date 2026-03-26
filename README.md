@@ -1,4 +1,4 @@
-# 微信和 Claude 手牵手
+# 微信 Claude Code 助手
 
 把微信变成本地 Claude Code 的远程任务入口。
 

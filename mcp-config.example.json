@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "wechat-claude-holdhands": {
+    "wechat-claude-assistant": {
       "command": "node",
       "args": [
         "./dist/cli.js",

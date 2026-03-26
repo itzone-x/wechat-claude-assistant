@@ -4,7 +4,7 @@
 
 ## Repository Name
 
-`wechat-claude-holdhands`
+`wechat-claude-assistant`
 
 ## About
 
@@ -50,7 +50,7 @@ Worker-first WeChat bridge for local Claude Code, with text, image, and voice in
 
 如果你要在个人主页或组织主页置顶仓库，可以用这段：
 
-`wechat-claude-holdhands` 把微信变成本地 Claude Code 的远程任务入口。主路径采用 `worker-first` 设计，支持文本、图片、图片链接和语音输入，适合把“人在聊天工具里发一句，本地 AI 开始干活”这类场景真正做成可长期使用的工具。
+`wechat-claude-assistant` 把微信变成本地 Claude Code 的远程任务入口。主路径采用 `worker-first` 设计，支持文本、图片、图片链接和语音输入，适合把“人在聊天工具里发一句，本地 AI 开始干活”这类场景真正做成可长期使用的工具。
 
 ## Recommended Release Title
 

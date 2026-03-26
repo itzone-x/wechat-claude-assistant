@@ -72,7 +72,7 @@ async function runPollingLoop(
 function createChannelServer() {
   const wechatBridge = createWechatBridge('channels');
   const server = new Server({
-    name: 'wechat-claude-holdhands',
+    name: 'wechat-claude-assistant',
     version: '0.2.0'
   }, {
     capabilities: {
@@ -131,7 +131,7 @@ export async function startChannelServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error('微信和 Claude 手牵手已启动（channels adapter 模式）');
+  console.error('微信 Claude Code 助手已启动（channels adapter 模式）');
   void runPollingLoop(bridge, wechatBridge);
 }
 
