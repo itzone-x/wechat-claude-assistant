@@ -11,6 +11,36 @@
 - Claude Code 处理代码或分析任务
 - 结果自动回发微信
 
+## English Summary
+
+`wechat-claude-assistant` turns WeChat into a worker-first remote task entry for local Claude Code.
+
+You send a message from WeChat. A local worker picks it up, runs Claude Code on your machine, and sends the result back to chat.
+
+It supports:
+
+- text
+- image
+- image + text
+- image links
+- voice
+- voice + text
+
+The default path is `worker`, not `channels`, because the goal is daily usability rather than session-only protocol demos.
+
+## 一眼看懂它怎么工作
+
+```mermaid
+flowchart LR
+    A["WeChat / ClawBot"] --> B["WeChat Bridge Core"]
+    B --> C["worker 模式"]
+    C --> D["Local Claude Code"]
+    D --> C
+    C --> A
+    B -. 高级模式 .-> E["channels 模式"]
+    E -. 桥接到 .-> F["当前 Claude Code 会话"]
+```
+
 ## 新手 3 分钟上手
 
 如果你是第一次接触这个项目，直接走这条路径，不要先折腾 `channels`。
