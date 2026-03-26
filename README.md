@@ -224,10 +224,6 @@ WeChat Bridge Core
 - 希望本地 Agent 能后台常驻的人
 - 想研究“即时通信入口 + 本地 AI Agent”这类产品形态的人
 
-## 现在不建议怎么用
-
-旧的实验入口已经归档，不再建议继续使用。
-
 ## 开源协作
 
 - 贡献说明：[`CONTRIBUTING.md`](CONTRIBUTING.md)
