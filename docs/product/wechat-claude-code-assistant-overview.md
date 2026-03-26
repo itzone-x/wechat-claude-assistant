@@ -307,58 +307,7 @@ node dist/cli.js service install
 node dist/cli.js service uninstall
 ```
 
-## 与竞品相比，它的定位和优势是什么
-
-下面主要对比两个最接近的参考项目：
-
-- [`wong2/weixin-agent-sdk`](https://github.com/wong2/weixin-agent-sdk)
-- [`Johnixr/claude-code-wechat-channel`](https://github.com/Johnixr/claude-code-wechat-channel)
-
-### 对比 `wong2/weixin-agent-sdk`
-
-`weixin-agent-sdk` 的强项是：
-
-- 抽象干净
-- SDK 化程度高
-- 支持 ACP
-- 容易接入多种 Agent 后端
-
-它更像一个 **底层桥接框架 / SDK**。
-
-本项目和它的区别在于：
-
-- 本项目不是只停留在 SDK 抽象，而是进一步做成了 **面向 Claude Code 的成品工具**
-- 本项目补了更明确的本机运行路径：安装向导、后台模式、`launchd`、状态命令、停止命令
-- 本项目把“微信派活到本地 Claude Code”这个单场景做了更强的产品化收口
-
-可以理解为：
-
-- `weixin-agent-sdk` 更像“平台能力”
-- 本项目更像“围绕 Claude Code 的垂直产品”
-
-### 对比 `Johnixr/claude-code-wechat-channel`
-
-`Johnixr` 项目的强项是：
-
-- 对 Claude Code Channels 路线聚焦
-- 结构直接
-- 适合做 channel 桥接演示和研究
-
-它更像一个 **Channels 插件实现**。
-
-本项目和它的区别在于：
-
-- 本项目把 `channels` 降成了高级模式，而不是默认路径
-- 本项目的主路径不依赖当前 Claude Code 会话在线
-- 本项目在 API key / 自定义网关 / Channels 不可用的环境里，仍然能通过 worker 模式运行
-
-这意味着本项目在真实使用场景里更稳：
-
-- 对普通用户更友好
-- 对本机后台派活更自然
-- 对会话在线状态依赖更小
-
-### 本项目的独特创新点
+### 本项目的创新点
 
 #### 1. 双模式产品架构
 
