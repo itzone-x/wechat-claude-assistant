@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import type { InstallConfig } from '../types/install.js';
 
-export const APP_NAME = '微信 Claude Code 助手';
+export const APP_NAME = '微信和 Claude 手牵手';
 export const DEFAULT_BASE_URL = 'https://ilinkai.weixin.qq.com';
 export const DEFAULT_CDN_BASE_URL = 'https://novac2c.cdn.weixin.qq.com/c2c';
 export const DEFAULT_BOT_TYPE = '3';

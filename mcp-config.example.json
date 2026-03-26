@@ -1,9 +1,9 @@
 {
   "mcpServers": {
-    "wechat-and-claude-code-holding-hands": {
+    "wechat-claude-holdhands": {
       "command": "node",
       "args": [
-        "/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/dist/cli.js",
+        "./dist/cli.js",
         "start",
         "--mode",
         "channels"

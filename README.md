@@ -1,4 +1,4 @@
-# 微信 Claude Code 助手
+# 微信和 Claude 手牵手
 
 把微信变成本地 Claude Code 的远程任务入口。
 
@@ -211,11 +211,11 @@ WeChat Bridge Core
 
 如果你想继续看：
 
-- 版本变更：[`CHANGELOG.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/CHANGELOG.md)
-- 发布说明：[`docs/releases/v0.1.0-worker-first.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/docs/releases/v0.1.0-worker-first.md)
-- 产品与架构说明：[`docs/product/wechat-claude-code-assistant-overview.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/docs/product/wechat-claude-code-assistant-overview.md)
-- 高级模式说明：[`docs/advanced/channels-mode.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/docs/advanced/channels-mode.md)
-- 使用指南：[`USAGE.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/USAGE.md)
+- 版本变更：[`CHANGELOG.md`](CHANGELOG.md)
+- 发布说明：[`docs/releases/v0.1.0-worker-first.md`](docs/releases/v0.1.0-worker-first.md)
+- 产品与架构说明：[`docs/product/wechat-claude-code-assistant-overview.md`](docs/product/wechat-claude-code-assistant-overview.md)
+- 高级模式说明：[`docs/advanced/channels-mode.md`](docs/advanced/channels-mode.md)
+- 使用指南：[`USAGE.md`](USAGE.md)
 
 ## 适合谁
 
@@ -230,12 +230,12 @@ WeChat Bridge Core
 
 ## 开源协作
 
-- 贡献说明：[`CONTRIBUTING.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/CONTRIBUTING.md)
-- 安全反馈：[`SECURITY.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/SECURITY.md)
-- 行为规范：[`CODE_OF_CONDUCT.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/CODE_OF_CONDUCT.md)
-- 许可证：[`LICENSE`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/LICENSE)
-- GitHub 发布清单：[`docs/releases/github-open-source-checklist.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/docs/releases/github-open-source-checklist.md)
-- GitHub 仓库元信息：[`docs/releases/github-repository-metadata.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/docs/releases/github-repository-metadata.md)
+- 贡献说明：[`CONTRIBUTING.md`](CONTRIBUTING.md)
+- 安全反馈：[`SECURITY.md`](SECURITY.md)
+- 行为规范：[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
+- 许可证：[`LICENSE`](LICENSE)
+- GitHub 发布清单：[`docs/releases/github-open-source-checklist.md`](docs/releases/github-open-source-checklist.md)
+- GitHub 仓库元信息：[`docs/releases/github-repository-metadata.md`](docs/releases/github-repository-metadata.md)
 
 推荐只使用这组命令：
 

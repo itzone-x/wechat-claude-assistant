@@ -12,8 +12,8 @@
 
 如果你要先理解项目定位、架构和使用边界，建议先读：
 
-- [`docs/product/wechat-claude-code-assistant-overview.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/docs/product/wechat-claude-code-assistant-overview.md)
-- [`docs/releases/v0.1.0-worker-first.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/docs/releases/v0.1.0-worker-first.md)
+- [`docs/product/wechat-claude-code-assistant-overview.md`](docs/product/wechat-claude-code-assistant-overview.md)
+- [`docs/releases/v0.1.0-worker-first.md`](docs/releases/v0.1.0-worker-first.md)
 
 ## 前置要求
 
@@ -24,7 +24,7 @@
 ## 第一次安装
 
 ```bash
-cd wechat-claude-channel
+cd wechat-claude-holdhands
 npm install
 npm run build
 node dist/cli.js install
@@ -128,7 +128,7 @@ node dist/cli.js start --mode channels
 
 更完整的高级模式说明见：
 
-- [`docs/advanced/channels-mode.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/docs/advanced/channels-mode.md)
+- [`docs/advanced/channels-mode.md`](docs/advanced/channels-mode.md)
 
 ## 状态目录
 

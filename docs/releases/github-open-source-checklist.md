@@ -36,7 +36,7 @@
 
 ### Repository name
 
-`wechat-claude-channel`
+`wechat-claude-holdhands`
 
 ### Description
 

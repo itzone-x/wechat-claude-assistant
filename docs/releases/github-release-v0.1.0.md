@@ -58,7 +58,7 @@ node dist/cli.js service install
 
 ## 文档
 
-- 产品与架构说明：[`docs/product/wechat-claude-code-assistant-overview.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/docs/product/wechat-claude-code-assistant-overview.md)
-- 发布说明：[`docs/releases/v0.1.0-worker-first.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/docs/releases/v0.1.0-worker-first.md)
-- 高级模式说明：[`docs/advanced/channels-mode.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/docs/advanced/channels-mode.md)
-- 变更记录：[`CHANGELOG.md`](/Users/zhoutianyou/Documents/其他/AI相关/wechat and claude code holding hands/wechat-claude-channel/CHANGELOG.md)
+- 产品与架构说明：[`docs/product/wechat-claude-code-assistant-overview.md`](../product/wechat-claude-code-assistant-overview.md)
+- 发布说明：[`docs/releases/v0.1.0-worker-first.md`](v0.1.0-worker-first.md)
+- 高级模式说明：[`docs/advanced/channels-mode.md`](../advanced/channels-mode.md)
+- 变更记录：[`CHANGELOG.md`](../../CHANGELOG.md)

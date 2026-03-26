@@ -10,9 +10,9 @@
 
 如果你准备提交改动，建议先读：
 
-- [README.md](/Users/zhoutianyou/Documents/其他/AI相关/wechat%20and%20claude%20code%20holding%20hands/wechat-claude-channel/README.md)
-- [USAGE.md](/Users/zhoutianyou/Documents/其他/AI相关/wechat%20and%20claude%20code%20holding%20hands/wechat-claude-channel/USAGE.md)
-- [ARCHITECTURE.md](/Users/zhoutianyou/Documents/其他/AI相关/wechat%20and%20claude%20code%20holding%20hands/wechat-claude-channel/ARCHITECTURE.md)
+- [README.md](README.md)
+- [USAGE.md](USAGE.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ## 开发环境
 

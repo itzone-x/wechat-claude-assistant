@@ -9,7 +9,7 @@ import { runStatusCommand } from './commands/status.js';
 import { runStopCommand } from './commands/stop.js';
 
 function printHelp(): void {
-  console.log(`微信 Claude Code 助手
+  console.log(`微信和 Claude 手牵手
 
 用法:
   node dist/cli.js install      安装向导（默认走微信派活模式）
