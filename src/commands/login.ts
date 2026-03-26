@@ -17,4 +17,9 @@ export async function runLoginCommand(): Promise<void> {
   }
 
   await performLogin();
+  console.log('\n注意：`login` 只完成微信认证，不会自动启动 worker。');
+  console.log('如需开始接收并回复微信消息，请继续运行：');
+  console.log('  `node dist/cli.js start`');
+  console.log('或');
+  console.log('  `node dist/cli.js start --daemon`');
 }

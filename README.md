@@ -76,6 +76,8 @@ node dist/cli.js install
 4. 执行策略设置
 5. 自动启动偏好保存
 
+注意：这一步只会完成配置和微信登录，不会自动开始监听微信消息。
+
 ### 第三步：启动 worker
 
 前台运行：
@@ -89,6 +91,8 @@ node dist/cli.js start
 ```bash
 node dist/cli.js start --daemon
 ```
+
+只有看到终端输出 `worker 模式已启动`，微信里的消息才会收到回复。
 
 ### 第一次验证
 
