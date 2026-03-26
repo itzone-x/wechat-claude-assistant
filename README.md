@@ -1,5 +1,7 @@
 # 微信 Claude Code 助手
 
+![WeChat Claude Code Assistant overview](docs/assets/github-overview.svg)
+
 把微信变成本地 Claude Code 的远程任务入口。
 
 你在手机上发一句话，本机上的 Claude Code 就开始干活。任务过程会回到微信，结果也会回到微信。你不需要一直守着终端，也不需要专门开一个网页面板。

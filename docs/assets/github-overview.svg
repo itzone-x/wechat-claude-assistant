@@ -1,0 +1,100 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F6F8FB"/>
+      <stop offset="1" stop-color="#E9F3FF"/>
+    </linearGradient>
+    <linearGradient id="card" x1="240" y1="170" x2="960" y2="460" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F7FBFF"/>
+    </linearGradient>
+    <filter id="shadow" x="210" y="140" width="780" height="350" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="18"/>
+      <feGaussianBlur stdDeviation="15"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.141176 0 0 0 0 0.243137 0 0 0 0 0.388235 0 0 0 0.12 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M2 2L10 6L2 10V2Z" fill="#2F7DF6"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <circle cx="1040" cy="94" r="82" fill="#DCEBFF"/>
+  <circle cx="1110" cy="156" r="34" fill="#C5DEFF"/>
+  <circle cx="124" cy="536" r="96" fill="#DFF5EA"/>
+  <circle cx="194" cy="474" r="36" fill="#C7ECD7"/>
+
+  <text x="86" y="94" fill="#0F172A" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="700">
+    WeChat Claude Code Assistant
+  </text>
+  <text x="86" y="132" fill="#3B4A63" font-family="Arial, Helvetica, sans-serif" font-size="22">
+    Worker-first remote task entry for local Claude Code
+  </text>
+
+  <g filter="url(#shadow)">
+    <rect x="240" y="170" width="720" height="290" rx="28" fill="url(#card)"/>
+  </g>
+
+  <rect x="284" y="248" width="150" height="126" rx="22" fill="#E7F1FF"/>
+  <text x="359" y="296" text-anchor="middle" fill="#1C3F6E" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700">
+    WeChat
+  </text>
+  <text x="359" y="322" text-anchor="middle" fill="#1C3F6E" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700">
+    / ClawBot
+  </text>
+  <text x="359" y="352" text-anchor="middle" fill="#3B5E8E" font-family="Arial, Helvetica, sans-serif" font-size="14">
+    text
+  </text>
+  <text x="359" y="372" text-anchor="middle" fill="#3B5E8E" font-family="Arial, Helvetica, sans-serif" font-size="14">
+    image
+  </text>
+  <text x="359" y="392" text-anchor="middle" fill="#3B5E8E" font-family="Arial, Helvetica, sans-serif" font-size="14">
+    voice
+  </text>
+
+  <rect x="525" y="226" width="150" height="170" rx="22" fill="#EEF8F2"/>
+  <text x="600" y="274" text-anchor="middle" fill="#184C2E" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700">
+    Bridge Core
+  </text>
+  <text x="600" y="308" text-anchor="middle" fill="#2F6B47" font-family="Arial, Helvetica, sans-serif" font-size="14">
+    pairing
+  </text>
+  <text x="600" y="328" text-anchor="middle" fill="#2F6B47" font-family="Arial, Helvetica, sans-serif" font-size="14">
+    dedupe
+  </text>
+  <text x="600" y="348" text-anchor="middle" fill="#2F6B47" font-family="Arial, Helvetica, sans-serif" font-size="14">
+    media handling
+  </text>
+  <text x="600" y="368" text-anchor="middle" fill="#2F6B47" font-family="Arial, Helvetica, sans-serif" font-size="14">
+    worker routing
+  </text>
+
+  <rect x="766" y="248" width="150" height="126" rx="22" fill="#FFF2E8"/>
+  <text x="841" y="286" text-anchor="middle" fill="#6B3412" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700">
+    Local
+  </text>
+  <text x="841" y="312" text-anchor="middle" fill="#6B3412" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700">
+    Claude Code
+  </text>
+  <text x="841" y="344" text-anchor="middle" fill="#8A5330" font-family="Arial, Helvetica, sans-serif" font-size="14">
+    run tasks
+  </text>
+  <text x="841" y="364" text-anchor="middle" fill="#8A5330" font-family="Arial, Helvetica, sans-serif" font-size="14">
+    return result
+  </text>
+
+  <path d="M434 311H505" stroke="#2F7DF6" stroke-width="6" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <path d="M675 311H746" stroke="#2F7DF6" stroke-width="6" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <path d="M841 394C841 432 593 432 593 394" stroke="#3FB47A" stroke-width="5" stroke-linecap="round"/>
+  <path d="M593 394C593 432 359 432 359 394" stroke="#3FB47A" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)"/>
+
+  <rect x="86" y="494" width="1028" height="64" rx="18" fill="#0F172A"/>
+  <text x="116" y="534" fill="#F8FAFC" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">
+    Send tasks from WeChat. Run Claude Code locally. Get the result back in chat.
+  </text>
+</svg>

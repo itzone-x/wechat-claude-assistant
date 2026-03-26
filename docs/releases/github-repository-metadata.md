@@ -34,6 +34,10 @@ Use WeChat as a worker-first remote task entry for local Claude Code, with optio
 
 如果你要做 GitHub 仓库的社交卡片或简介图，建议文案：
 
+建议配图：
+
+- [`docs/assets/github-overview.svg`](../assets/github-overview.svg)
+
 ### 版本 1
 
 WeChat as a worker-first remote task entry for local Claude Code.
