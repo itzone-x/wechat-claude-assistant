@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# Local Claude / MCP config
+.claude/
+.mcp.json
+
+# Private notes and drafts
+docs/content/
+docs/plans/
+session-log.md
+
+# Legacy local scratch files
+channel.json
+wechat-claude-channel/
