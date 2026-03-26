@@ -34,7 +34,9 @@ export async function runStatusCommand(): Promise<void> {
   const runtimePid = Number.isFinite(pidFromFile)
     ? pidFromFile
     : (runtime.running ? runtime.pid : undefined);
-  const runtimeAlive = runtime.running && isProcessAlive(runtimePid);
+  const runtimeAlive = runtimePid
+    ? isProcessAlive(runtimePid)
+    : runtime.running;
 
   console.log('当前状态：');
   console.log(`- 默认模式: ${config.mode}`);
