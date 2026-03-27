@@ -23,7 +23,8 @@
     "doctor:fix": "node dist/cli.js doctor --fix",
     "release:patch": "npm run build && node dist/release-cli.js patch",
     "release:minor": "npm run build && node dist/release-cli.js minor",
-    "release:major": "npm run build && node dist/release-cli.js major"
+    "release:major": "npm run build && node dist/release-cli.js major",
+    "release:publish": "npm run build && node dist/release-publish-cli.js"
   },
   "keywords": ["claude-code", "wechat", "channel", "agent", "worker"],
   "author": "",

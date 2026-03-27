@@ -55,6 +55,25 @@ npm run release:patch -- --title "Stability Update" --slug "stability-update"
 
 如果 `[Unreleased]` 为空，脚本默认会中止，避免发一个没有内容的版本。
 
+仓库也内置了 GitHub Release 发布命令：
+
+```bash
+GITHUB_PERSONAL_ACCESS_TOKEN=你的Token npm run release:publish
+```
+
+默认行为：
+
+- 自动从 `package.json` 推导 tag，例如 `v0.1.1`
+- 自动从 `git remote origin` 推导 GitHub 仓库
+- 自动读取 `docs/releases/github-release-vX.Y.Z.md`
+- 如果该 tag 的 Release 已存在，就更新；不存在就创建
+
+也可以显式指定：
+
+```bash
+GITHUB_PERSONAL_ACCESS_TOKEN=你的Token npm run release:publish -- --tag v0.1.1 --repo itzone-x/wechat-claude-assistant
+```
+
 ## 标准发布步骤
 
 1. 运行发布准备命令
@@ -87,7 +106,11 @@ git push origin vX.Y.Z
 ```
 
 4. 创建 GitHub Release  
-   使用 `docs/releases/github-release-vX.Y.Z.md` 作为正文
+   推荐直接运行：
+
+```bash
+GITHUB_PERSONAL_ACCESS_TOKEN=你的Token npm run release:publish
+```
 
 ## 当前约定
 
