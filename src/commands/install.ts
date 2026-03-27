@@ -1,4 +1,5 @@
 import { runInstallWizard } from '../ui/wizard.js';
+import { readTextFile } from '../core/state.js';
 import type { InstallConfig } from '../types/install.js';
 import {
   getLaunchdStatus,
@@ -6,11 +7,63 @@ import {
   isLaunchdSupported
 } from '../core/launchd.js';
 import { syncChannelsLocalConfig } from '../core/channels-config.js';
+import { getStatePaths } from '../core/config.js';
+import { loadRuntimeStatus } from '../runtime/progress.js';
 
 export interface InstallCompletionState {
   autoStartAttempted?: boolean;
   autoStartLoaded?: boolean;
+  workerRunning?: boolean;
+  workerPid?: number;
   autoStartError?: string | null;
+}
+
+function isProcessAlive(pid?: number): boolean {
+  if (!pid) {
+    return false;
+  }
+
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EPERM') {
+      return true;
+    }
+    return false;
+  }
+}
+
+async function waitForInstalledWorkerReady(
+  timeoutMs = 5000
+): Promise<{ running: boolean; pid?: number }> {
+  const deadline = Date.now() + timeoutMs;
+  const paths = getStatePaths();
+
+  while (Date.now() < deadline) {
+    const runtime = await loadRuntimeStatus();
+    const pidFromFile = Number.parseInt((await readTextFile(paths.runtimePidPath, '')).trim(), 10);
+    const pid = Number.isFinite(pidFromFile)
+      ? pidFromFile
+      : runtime.pid;
+
+    if (pid && isProcessAlive(pid)) {
+      return { running: true, pid };
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+
+  const runtime = await loadRuntimeStatus();
+  const pidFromFile = Number.parseInt((await readTextFile(paths.runtimePidPath, '')).trim(), 10);
+  const pid = Number.isFinite(pidFromFile)
+    ? pidFromFile
+    : runtime.pid;
+
+  return {
+    running: Boolean(pid && isProcessAlive(pid)),
+    pid: pid || undefined
+  };
 }
 
 export function buildInstallNextSteps(
@@ -26,6 +79,14 @@ export function buildInstallNextSteps(
 
   if (config.preferredAutoStart && isLaunchdSupported()) {
     if (state.autoStartLoaded) {
+      if (state.workerRunning) {
+        return [
+          '1. 自动启动服务已安装并加载，worker 已在运行。',
+          '2. 看到下面的状态摘要后，可以直接在微信里发送 `/echo 你好` 做第一次验证。',
+          '3. 如需停用自动启动，运行 `node dist/cli.js service uninstall`。'
+        ];
+      }
+
       return [
         '1. 自动启动服务已安装并加载。',
         '2. 运行 `node dist/cli.js service status` 和 `node dist/cli.js status` 确认状态。',
@@ -63,7 +124,16 @@ export async function runInstallCommand(): Promise<void> {
       const status = await getLaunchdStatus();
       completionState.autoStartLoaded = status.loaded;
       if (status.loaded) {
+        const workerState = await waitForInstalledWorkerReady();
+        completionState.workerRunning = workerState.running;
+        completionState.workerPid = workerState.pid;
         console.log('\n已自动安装并启动 worker 自动启动服务。');
+        console.log('当前状态摘要：');
+        console.log(`- 自动启动服务: ${status.loaded ? '已加载' : '未加载'}`);
+        console.log(`- worker 运行中: ${workerState.running ? '是' : '否'}`);
+        if (workerState.pid) {
+          console.log(`- worker PID: ${workerState.pid}`);
+        }
       }
     } catch (error) {
       completionState.autoStartError = error instanceof Error ? error.message : String(error);

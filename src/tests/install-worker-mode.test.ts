@@ -53,6 +53,22 @@ test('install next steps prefer service verification when auto-start is loaded',
   assert.match(lines.join('\n'), /\/echo 你好/);
 });
 
+test('install next steps shorten when auto-start is loaded and worker is already running', () => {
+  const config = getDefaultInstallConfig('/tmp/project');
+  config.preferredAutoStart = true;
+
+  const lines = buildInstallNextSteps(config, {
+    autoStartAttempted: true,
+    autoStartLoaded: true,
+    workerRunning: true,
+    workerPid: 12345
+  });
+
+  assert.match(lines.join('\n'), /worker 已在运行/);
+  assert.match(lines.join('\n'), /\/echo 你好/);
+  assert.doesNotMatch(lines.join('\n'), /service status/);
+});
+
 test('install next steps fall back to manual start when auto-start is not loaded', () => {
   const config = getDefaultInstallConfig('/tmp/project');
   config.preferredAutoStart = true;

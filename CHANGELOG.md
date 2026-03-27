@@ -49,6 +49,7 @@ All notable changes to this project will be documented in this file.
 - Changed inbound message handling to keep a short-lived dedup snapshot across worker restarts, reducing repeated replies caused by duplicate WeChat deliveries.
 - Changed conversation session storage to scope Claude session mappings by workspace root as well as WeChat user, avoiding cross-project session leakage on the same machine.
 - Changed the install flow so choosing the auto-start preference now attempts to install and start the local launchd worker service immediately, then prints verification steps.
+- Changed the install flow to print a concise worker status summary immediately after successful auto-start setup, reducing post-install guesswork for new users.
 
 ### Fixed
 - Fixed duplicate worker replies when the same text, voice, or multimodal WeChat message is delivered more than once by the upstream polling API.
