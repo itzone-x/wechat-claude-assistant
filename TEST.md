@@ -27,7 +27,7 @@ npm test
 ## 当前自动化基线
 
 - `npm test`
-- `88 / 88` 通过
+- `94 / 94` 通过
 
 ## 最小人工验收清单
 
@@ -66,6 +66,16 @@ node dist/cli.js status
 4. 如果本次改动涉及图片、语音、URL 或文件附件，再补一条对应多模态消息
 
 如果这 4 步都正常，通常就足够说明主路径没有被破坏。
+
+如果这次改动准备对外发版，还需要把对应版本的人工验收记录补成通过状态：
+
+- `docs/releases/manual-verification-vX.Y.Z.md`
+
+至少补齐：
+
+- `Status: PASS`
+- `Verifier: ...`
+- `Verified-at: ...`
 
 ## 人工联调清单
 

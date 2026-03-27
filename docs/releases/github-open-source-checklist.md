@@ -56,7 +56,7 @@ Use WeChat as a worker-first remote task entry for local Claude Code, with optio
 
 ## 3. 当前推荐 Release 标题
 
-`v0.2.0 · URL and Document Understanding`
+`v0.2.1 · Stability and URL Parsing Update`
 
 ## 4. 首个 Release 摘要
 

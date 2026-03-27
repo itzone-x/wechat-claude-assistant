@@ -1,6 +1,6 @@
 {
   "name": "wechat-claude-assistant",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "微信 Claude Code 助手 - worker-first 的本地微信派活工具，兼容高级 Channels 模式",
   "type": "module",
   "main": "dist/cli.js",
@@ -40,9 +40,13 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1"
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@mozilla/readability": "^0.6.0",
+    "jsdom": "^26.1.0",
+    "playwright-core": "^1.58.2"
   },
   "devDependencies": {
+    "@types/jsdom": "^28.0.1",
     "@types/node": "^20.0.0",
     "typescript": "^5.3.0"
   },

@@ -15,6 +15,7 @@ import {
   updateRecommendedReleaseOneLiner,
   updateRecommendedReleaseTitle,
 } from './core/release.js';
+import { ensureManualVerificationTemplate } from './core/release-gate.js';
 
 interface CliOptions {
   kind: ReleaseKind;
@@ -102,6 +103,7 @@ function main(): void {
   const oneLiner = defaultReleaseOneLiner(options.kind);
   const releaseNotesRelativePath = `docs/releases/v${nextVersion}-${releaseSlug}.md`;
   const githubReleaseRelativePath = `docs/releases/github-release-v${nextVersion}.md`;
+  const tag = `v${nextVersion}`;
 
   packageJson.version = nextVersion;
   packageLock.version = nextVersion;
@@ -124,6 +126,7 @@ function main(): void {
     path.join(rootDir, githubReleaseRelativePath),
     buildGitHubReleaseNotes(nextVersion, releaseTitle, oneLiner, unreleasedBody)
   );
+  const manualVerificationRelativePath = ensureManualVerificationTemplate(rootDir, tag);
 
   const readme = fs.readFileSync(readmePath, 'utf8');
   const usage = fs.readFileSync(usagePath, 'utf8');
@@ -147,12 +150,14 @@ function main(): void {
       `发布标题: ${releaseTitle}`,
       `发布说明: ${releaseNotesRelativePath}`,
       `GitHub Release 文案: ${githubReleaseRelativePath}`,
+      `人工验收记录: ${manualVerificationRelativePath}`,
       '下一步建议执行:',
       '1. npm test',
-      `2. git commit -m "Release v${nextVersion}"`,
-      `3. git tag v${nextVersion}`,
-      '4. git push origin main',
-      `5. git push origin v${nextVersion}`,
+      `2. 按真实链路完成人工验收，并把 ${manualVerificationRelativePath} 中的 Status 改为 PASS`,
+      `3. git commit -m "Release v${nextVersion}"`,
+      `4. git tag v${nextVersion}`,
+      '5. git push origin main',
+      `6. git push origin v${nextVersion}`,
     ].join('\n')
   );
 }

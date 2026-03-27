@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-03-27
+
+### Added
+- Added a dedicated web fetch subsystem for webpage ingestion so HTTP retrieval, proxy handling, transport fallback, and HTML extraction are no longer mixed in one file.
+- Added DNS-aware SSRF protection for remote URL fetching, blocking hostnames that resolve to local or private network addresses.
+
+### Changed
+- Changed webpage fetching to use a proxy-aware transport order that prefers the current machine environment and falls back to a bypassed proxy strategy only when needed.
+- Changed known placeholder chapter pages such as 3Q mobile novel fragments to degrade deterministically instead of attempting expensive browser fallback.
+
+### Fixed
+- Fixed public webpage retrieval reliability for common documentation and article sites by stabilizing the `fetch -> curl` fallback path.
+- Fixed webpage summarization so missing-body pages no longer infer正文内容 from titles, navigation, or chapter metadata.
+
 ## [0.2.0] - 2026-03-27
 
 ### Added
@@ -18,6 +32,10 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Fixed WeChat file attachments being misclassified as image payloads during media extraction.
+- Fixed release gating so GitHub publish and ship flows now stop when manual verification is still pending.
+
+### Changed
+- Changed the local release workflow to generate a versioned manual verification record and require it to be marked PASS before pushing runtime-facing releases.
 
 ## [0.1.1] - 2026-03-27
 

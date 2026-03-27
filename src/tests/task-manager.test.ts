@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -99,14 +99,15 @@ async function waitForReplyMatch(
   await waitFor(() => replies.some((reply) => pattern.test(reply)), timeoutMs);
 }
 
-test('worker prompt includes workspace constraint and chinese summary requirement', () => {
+test('worker prompt prefers direct answers over templated change summaries', () => {
   const prompt = buildClaudeWorkerPrompt({
     workspaceRoot: '/tmp/project',
     taskText: '修复登录 bug'
   });
 
   assert.match(prompt, /工作目录 \/tmp\/project/);
-  assert.match(prompt, /请用中文简短总结/);
+  assert.match(prompt, /默认直接回答用户问题/);
+  assert.match(prompt, /只有当你实际修改了工作区文件时/);
   assert.match(prompt, /不要调用任何 MCP、插件或微信回复工具/);
   assert.match(prompt, /修复登录 bug/);
 });
@@ -173,6 +174,7 @@ test('worker prompt includes document and webpage attachment hints when provided
   assert.match(prompt, /report-preview\.md/);
   assert.match(prompt, /原始附件: \/tmp\/input\/report\.pdf/);
   assert.match(prompt, /标题: 公众号文章标题/);
+  assert.match(prompt, /不要根据标题、章节名、作者、站点信息、目录或页面框架推断正文内容/);
 });
 
 test('parseWorkerCommand recognizes reset', () => {
@@ -185,7 +187,14 @@ test('task manager reports successful worker execution without spawning claude',
     const replies: Array<{ text: string; toUserId?: string; contextToken?: string }> = [];
     const runner = new FakeRunner({
       exitCode: 0,
-      stdout: '已完成：修改 src/example.ts 并通过验证',
+      stdout: [
+        '已完成：修改 src/example.ts 并通过验证',
+        '',
+        '**总结：**',
+        '- **做了什么：** 修复登录 bug',
+        '- **改了哪些文件：** src/example.ts',
+        '- **如何验证：** npm test'
+      ].join('\n'),
       stderr: ''
     });
     const manager = new TaskManager(
@@ -210,6 +219,61 @@ test('task manager reports successful worker execution without spawning claude',
     assert.equal(replies.length, 1);
     assert.equal(replies[0]?.text ?? '', '已完成：修改 src/example.ts 并通过验证');
     assert.equal(manager.hasActiveTask('user-123'), false);
+  });
+});
+
+test('task manager short-circuits when all webpage attachments explicitly miss body content', async () => {
+  await withStateDir(async () => {
+    const replies: string[] = [];
+    const runner = new FakeRunner({
+      exitCode: 0,
+      stdout: '这条输出不应该出现',
+      stderr: ''
+    });
+    const manager = new TaskManager(
+      createConfig(process.cwd()),
+      async (text) => {
+        replies.push(text);
+      },
+      runner,
+      5_000
+    );
+
+    const dir = await mkdtemp(join(tmpdir(), 'wechat-agent-missing-webpage-'));
+    const previewPath = join(dir, 'missing-body.md');
+    await writeFile(
+      previewPath,
+      [
+        '# 网页内容',
+        '标题：第5章 婚姻占卜术（术）',
+        '提取状态：正文缺失或源站未公开正文',
+        '',
+        '## 提取内容',
+        '',
+        '未能从源站公开 HTML 中提取到正文内容。',
+        '请不要根据标题、目录或站点框架推断正文细节。'
+      ].join('\n'),
+      'utf8'
+    );
+
+    await manager.handleMessage({
+      fromUserId: 'user-missing-web',
+      text: '帮我总结这个链接的内容',
+      contextToken: 'ctx-missing-web',
+      attachments: [{
+        type: 'webpage',
+        source: 'url-link',
+        filePath: previewPath,
+        title: '第5章 婚姻占卜术（术）',
+        originalUrl: 'https://example.com/chapter.html'
+      }]
+    });
+
+    await waitFor(() => replies.length >= 1 && !manager.hasActiveTask('user-missing-web'));
+
+    assert.equal(runner.requests.length, 0);
+    assert.match(replies[0] ?? '', /正文未能从公开页面中提取到/);
+    assert.match(replies[0] ?? '', /无法可靠总结具体内容/);
   });
 });
 

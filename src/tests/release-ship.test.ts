@@ -48,6 +48,7 @@ test('buildShipPlanSummary reflects publish mode', () => {
   const publish = buildShipPlanSummary('0.1.1', parseReleaseShipArgs(['patch']), true);
   const skip = buildShipPlanSummary('0.1.1', parseReleaseShipArgs(['patch', '--skip-publish']), true);
 
+  assert.match(manual, /人工验收记录: docs\/releases\/manual-verification-v0\.1\.2\.md/);
   assert.match(manual, /GitHub Release: manual/);
   assert.match(publish, /GitHub Release: publish/);
   assert.match(skip, /GitHub Release: skip/);

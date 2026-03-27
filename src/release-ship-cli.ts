@@ -8,6 +8,7 @@ import {
   releaseCommitMessage,
   releaseTag,
 } from './core/release-ship.js';
+import { assertManualVerificationApproved, manualVerificationPathForTag } from './core/release-gate.js';
 
 function run(command: string, args: string[], cwd: string, env = process.env): void {
   execFileSync(command, args, {
@@ -25,15 +26,11 @@ function readPackageVersion(rootDir: string): string {
   return packageJson.version;
 }
 
-function ensureCleanWorktree(rootDir: string): void {
-  const output = execFileSync('git', ['status', '--porcelain'], {
+function readWorktreeStatus(rootDir: string): string {
+  return execFileSync('git', ['status', '--porcelain'], {
     cwd: rootDir,
     encoding: 'utf8',
   }).trim();
-
-  if (output) {
-    throw new Error('工作区不干净。请先提交或清理现有改动，再运行 release:ship。');
-  }
 }
 
 function main(): void {
@@ -47,12 +44,36 @@ function main(): void {
     return;
   }
 
-  ensureCleanWorktree(rootDir);
+  const worktreeStatus = readWorktreeStatus(rootDir);
+  let nextVersion = currentVersion;
+  let tag = releaseTag(nextVersion);
 
-  run(process.execPath, ['dist/release-cli.js', ...buildReleasePrepareArgs(options)], rootDir);
+  if (!worktreeStatus) {
+    run(process.execPath, ['dist/release-cli.js', ...buildReleasePrepareArgs(options)], rootDir);
+    nextVersion = readPackageVersion(rootDir);
+    tag = releaseTag(nextVersion);
 
-  const nextVersion = readPackageVersion(rootDir);
-  const tag = releaseTag(nextVersion);
+    try {
+      assertManualVerificationApproved(rootDir, tag);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `${message}\n已完成版本准备。请先完成人工验收并更新 ${manualVerificationPathForTag(tag)}，然后重新运行同一条 release:ship 命令。`
+      );
+    }
+  } else {
+    tag = releaseTag(currentVersion);
+    const verificationPath = manualVerificationPathForTag(tag);
+    try {
+      assertManualVerificationApproved(rootDir, tag);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `工作区不干净，且未检测到可继续发布的人工验收通过状态。\n${message}\n如果这不是一个已准备好的发布工作区，请先清理改动后再运行 release:ship。`
+      );
+    }
+    process.stdout.write(`检测到已准备好的发布工作区，将继续发布 ${tag}。\n使用的人工验收记录: ${verificationPath}\n`);
+  }
 
   run('npm', ['test'], rootDir);
   run('git', ['add', '.'], rootDir);

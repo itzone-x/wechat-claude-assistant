@@ -7,6 +7,7 @@ import {
   releaseMarkdownPathForTag,
   versionFromTag,
 } from './core/github-release.js';
+import { assertManualVerificationApproved, manualVerificationPathForTag } from './core/release-gate.js';
 
 interface PublishOptions {
   tag?: string;
@@ -123,6 +124,7 @@ async function main(): Promise<void> {
   const tag = resolveTag(rootDir, options.tag);
   const repo = resolveRepo(rootDir, options.repo);
   const notesPath = resolveNotesPath(rootDir, tag, options.notes);
+  const verificationPath = path.join(rootDir, manualVerificationPathForTag(tag));
 
   if (!fs.existsSync(notesPath)) {
     throw new Error(`未找到 GitHub Release 文案: ${notesPath}`);
@@ -138,6 +140,7 @@ async function main(): Promise<void> {
           repo: `${repo.owner}/${repo.repo}`,
           tag,
           notesPath,
+          verificationPath,
           payload,
         },
         null,
@@ -146,6 +149,8 @@ async function main(): Promise<void> {
     );
     return;
   }
+
+  assertManualVerificationApproved(rootDir, tag);
 
   const existingUrl = `https://api.github.com/repos/${repo.owner}/${repo.repo}/releases/tags/${tag}`;
   let result: GitHubReleaseResponse;

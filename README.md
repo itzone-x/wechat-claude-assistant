@@ -342,7 +342,7 @@ node dist/cli.js start --mode channels
 
 自动化测试当前为：
 
-- `88 / 88`
+- `94 / 94`
 
 ## 架构一眼看懂
 
@@ -386,7 +386,7 @@ WeChat Bridge Core
 
 - 版本变更：[`CHANGELOG.md`](CHANGELOG.md)
 - 发布流程：[`RELEASING.md`](RELEASING.md)
-- 发布说明：[`docs/releases/v0.2.0-url-and-document-understanding.md`](docs/releases/v0.2.0-url-and-document-understanding.md)
+- 发布说明：[`docs/releases/v0.2.1-stability-and-url-parsing-update.md`](docs/releases/v0.2.1-stability-and-url-parsing-update.md)
 - 产品与架构说明：[`docs/product/wechat-claude-code-assistant-overview.md`](docs/product/wechat-claude-code-assistant-overview.md)
 - 高级模式说明：[`docs/advanced/channels-mode.md`](docs/advanced/channels-mode.md)
 - 使用指南：[`USAGE.md`](USAGE.md)

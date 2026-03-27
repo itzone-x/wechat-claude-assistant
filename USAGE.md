@@ -13,7 +13,7 @@
 如果你要先理解项目定位、架构和使用边界，建议先读：
 
 - [`docs/product/wechat-claude-code-assistant-overview.md`](docs/product/wechat-claude-code-assistant-overview.md)
-- [`docs/releases/v0.2.0-url-and-document-understanding.md`](docs/releases/v0.2.0-url-and-document-understanding.md)
+- [`docs/releases/v0.2.1-stability-and-url-parsing-update.md`](docs/releases/v0.2.1-stability-and-url-parsing-update.md)
 
 ## 前置要求
 

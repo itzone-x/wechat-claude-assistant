@@ -1,29 +1,48 @@
 import { spawnSync } from 'node:child_process';
 import { createDecipheriv, randomUUID } from 'node:crypto';
+import { accessSync, constants } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
+import { Readability } from '@mozilla/readability';
+import { JSDOM, VirtualConsole } from 'jsdom';
 
 import { DEFAULT_CDN_BASE_URL, getStatePaths } from './config.js';
+import {
+  assertSafeRemoteUrl,
+  buildBypassProxyEnv,
+  buildWebFetchInit,
+  fetchRemoteBufferWithFallback,
+  prefersProxyBypass,
+  WEB_FETCH_TIMEOUT_MS,
+  WEB_FETCH_USER_AGENT
+} from './web-fetch.js';
 import type { WorkerAttachment } from '../types/ilink.js';
+import type { FetchLike, FetchResponseLike } from './web-fetch.js';
 
 const IMAGE_EXTENSION_RE = /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif)(?:$|[?#])/i;
 const AUDIO_EXTENSION_RE = /\.(wav|mp3|ogg|m4a|aac|flac|silk)(?:$|[?#])/i;
 const DOCUMENT_EXTENSION_RE = /\.(pdf|docx?|xlsx?|pptx?|csv|tsv|md|markdown|txt|rtf|json|ya?ml|xml|html?)(?:$|[?#])/i;
 const TEXT_EXTENSION_RE = /\.(md|markdown|txt|csv|tsv|json|ya?ml|xml|html?|rtf|log|ini|toml|conf|properties|sql)(?:$|[?#])/i;
 const MAX_URL_CONTENT_ATTACHMENTS = 3;
+const MAX_WEBPAGE_FOLLOW_PAGES = 3;
+const BROWSER_IDLE_TIMEOUT_MS = 3_000;
+const COMMON_CHROME_PATHS = [
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/Applications/Chromium.app/Contents/MacOS/Chromium',
+  '/usr/bin/google-chrome',
+  '/usr/bin/chromium',
+  '/usr/bin/chromium-browser'
+];
 
-interface FetchResponseLike {
-  ok: boolean;
-  status: number;
-  headers: Pick<Headers, 'get'>;
-  arrayBuffer(): Promise<ArrayBuffer>;
-  text(): Promise<string>;
+function isExecutable(path: string): boolean {
+  try {
+    accessSync(path, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-type FetchLike = (
-  input: string | URL,
-  init?: RequestInit
-) => Promise<FetchResponseLike>;
 
 export interface ResolveMessageAttachmentsOptions {
   text: string;
@@ -40,6 +59,17 @@ export interface DownloadRemoteImageOptions {
   source?: WorkerAttachment['source'];
   originalUrl?: string;
   fetchImpl?: FetchLike;
+}
+
+export interface BrowserRenderResult {
+  html: string;
+  finalUrl?: string;
+}
+
+export type BrowserRenderLike = (url: string) => Promise<BrowserRenderResult | null>;
+
+export interface DownloadUrlContentOptions extends DownloadRemoteImageOptions {
+  browserRender?: BrowserRenderLike;
 }
 
 function defaultTargetDir(): string {
@@ -141,6 +171,21 @@ function ensureValidDownloadResponse(response: FetchResponseLike, source: string
   }
 }
 
+function resolveBrowserExecutable(): string | null {
+  const explicit = process.env.WECHAT_AGENT_BROWSER_EXECUTABLE?.trim();
+  if (explicit && isExecutable(explicit)) {
+    return explicit;
+  }
+
+  for (const candidate of COMMON_CHROME_PATHS) {
+    if (isExecutable(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
 function decodeHtmlEntities(input: string): string {
   return input
     .replace(/&nbsp;/gi, ' ')
@@ -151,6 +196,92 @@ function decodeHtmlEntities(input: string): string {
     .replace(/&#39;/gi, "'");
 }
 
+function stripNoiseHtmlBlocks(html: string): string {
+  let output = html;
+
+  const noisyTags = ['script', 'style', 'noscript', 'svg', 'form', 'button', 'nav', 'footer', 'header', 'aside'];
+  for (const tag of noisyTags) {
+    output = output.replace(new RegExp(`<${tag}[\\s\\S]*?<\\/${tag}>`, 'gi'), ' ');
+  }
+
+  const noisySignals = [
+    'toolbar',
+    'comment',
+    'comments',
+    'related',
+    'recommend',
+    'sidebar',
+    'share',
+    'footer',
+    'header',
+    'nav',
+    'qrcode',
+    'advert',
+    'copyright'
+  ];
+
+  for (const signal of noisySignals) {
+    output = output.replace(
+      new RegExp(
+        `<([a-z0-9]+)\\b[^>]*(?:id|class)=["'][^"']*${signal}[^"']*["'][^>]*>[\\s\\S]*?<\\/\\1>`,
+        'gi'
+      ),
+      ' '
+    );
+  }
+
+  return output.replace(/<!--[\s\S]*?-->/g, ' ');
+}
+
+function stripReadabilityUnsafeTags(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+    .replace(/<svg[\s\S]*?<\/svg>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ');
+}
+
+function htmlFragmentToText(html: string): string {
+  return normalizeWhitespace(
+    decodeHtmlEntities(
+      stripNoiseHtmlBlocks(html)
+        .replace(/<(br|\/p|\/div|\/section|\/article|\/li|\/ul|\/ol|\/h\d|\/tr|\/blockquote)>/gi, '\n')
+        .replace(/<\/t[dh]>/gi, '\t')
+        .replace(/<li\b[^>]*>/gi, '- ')
+        .replace(/<tr\b[^>]*>/gi, '\n')
+        .replace(/<p\b[^>]*>/gi, '\n')
+        .replace(/<blockquote\b[^>]*>/gi, '\n')
+        .replace(/<[^>]+>/g, ' ')
+    )
+  );
+}
+
+function extractPreferredHtmlRegion(html: string): string | null {
+  const directBlocks = [
+    /<article\b[^>]*>[\s\S]*?<\/article>/i,
+    /<(div|section)\b[^>]+id=["']js_content["'][^>]*>[\s\S]*?<\/\1>/i,
+    /<(div|section)\b[^>]+class=["'][^"']*(?:rich_media_content|entry-content|post-content|article-content|main-content)[^"']*["'][^>]*>[\s\S]*?<\/\1>/i
+  ];
+
+  let bestBlock: string | null = null;
+  let bestLength = 0;
+
+  for (const pattern of directBlocks) {
+    const match = html.match(pattern);
+    if (!match?.[0]) {
+      continue;
+    }
+    const text = htmlFragmentToText(match[0]);
+    if (text.length > bestLength) {
+      bestBlock = match[0];
+      bestLength = text.length;
+    }
+  }
+
+  return bestBlock;
+}
+
 function normalizeWhitespace(input: string): string {
   return input
     .replace(/\r/g, '')
@@ -159,23 +290,123 @@ function normalizeWhitespace(input: string): string {
     .trim();
 }
 
-function htmlToText(html: string): { title?: string; text: string } {
-  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
-    || html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
-  const title = titleMatch?.[1] ? decodeHtmlEntities(titleMatch[1]).trim() : undefined;
+function extractFirstMeaningfulHtmlValue(html: string, patterns: RegExp[]): string | undefined {
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (!match?.[1]) {
+      continue;
+    }
 
-  const text = normalizeWhitespace(
-    decodeHtmlEntities(
-      html
-        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-        .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
-        .replace(/<(br|\/p|\/div|\/li|\/h\d|\/tr)>/gi, '\n')
-        .replace(/<[^>]+>/g, ' ')
-    )
-  );
+    const value = normalizeWhitespace(
+      decodeHtmlEntities(match[1]).replace(/<[^>]+>/g, ' ')
+    );
+    if (value) {
+      return value;
+    }
+  }
 
-  return { title, text };
+  return undefined;
+}
+
+function isMeaningfulTitle(value: string | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+
+  const normalized = normalizeWhitespace(value);
+  if (!normalized) {
+    return false;
+  }
+
+  if (/^(loading|please wait|environment abnormal)$/i.test(normalized)) {
+    return false;
+  }
+
+  return true;
+}
+
+function extractHtmlMetadataTitle(html: string): string | undefined {
+  const preferred = [
+    /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+name=["']title["'][^>]+content=["']([^"']+)["']/i,
+    /<h1[^>]*>([\s\S]*?)<\/h1>/i,
+    /<title[^>]*>([\s\S]*?)<\/title>/i
+  ];
+
+  for (const pattern of preferred) {
+    const value = extractFirstMeaningfulHtmlValue(html, [pattern]);
+    if (isMeaningfulTitle(value)) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function extractReadableHtml(html: string, url: string): { title?: string; text: string } | null {
+  let dom: JSDOM | null = null;
+
+  try {
+    const sanitizedHtml = stripReadabilityUnsafeTags(html);
+    const virtualConsole = new VirtualConsole();
+    virtualConsole.on('jsdomError', () => {});
+    dom = new JSDOM(sanitizedHtml, {
+      url,
+      virtualConsole
+    });
+    const metadataTitle = extractHtmlMetadataTitle(html);
+    const article = new Readability(dom.window.document, {
+      charThreshold: 120,
+      keepClasses: false
+    }).parse();
+    if (!article) {
+      return null;
+    }
+
+    const articleTitle = typeof article.title === 'string' ? article.title : undefined;
+    const title = isMeaningfulTitle(articleTitle)
+      ? normalizeWhitespace(articleTitle || '')
+      : metadataTitle;
+    const text = normalizeWhitespace(
+      [
+        article.excerpt ? normalizeWhitespace(article.excerpt) : '',
+        article.content ? htmlFragmentToText(article.content) : ''
+      ].filter(Boolean).join('\n\n')
+    );
+
+    if (!text) {
+      return null;
+    }
+
+    return { title, text };
+  } catch {
+    return null;
+  } finally {
+    dom?.window.close();
+  }
+}
+
+function htmlToText(
+  html: string,
+  url: string
+): { title?: string; text: string; mode: 'readability' | 'heuristic' } {
+  const readable = extractReadableHtml(html, url);
+  const title = readable?.title || extractHtmlMetadataTitle(html);
+  const description = extractFirstMeaningfulHtmlValue(html, [
+    /<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i
+  ]) || '';
+  const preferredRegion = extractPreferredHtmlRegion(html);
+  const bodyText = htmlFragmentToText(preferredRegion || html);
+  const useReadable = Boolean(readable?.text && readable.text.length >= 300);
+  const preferredText = useReadable ? readable!.text : bodyText;
+  const text = normalizeWhitespace([description, preferredText].filter(Boolean).join('\n\n'));
+
+  return {
+    title,
+    text,
+    mode: useReadable ? 'readability' : 'heuristic'
+  };
 }
 
 function xmlToText(xml: string): string {
@@ -204,6 +435,73 @@ function isDocumentContentType(contentType: string | null | undefined): boolean 
     contentType
     && /(application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument|application\/vnd\.ms-|application\/rtf)/i.test(contentType)
   );
+}
+
+function normalizeCharset(value?: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized === 'gb2312' || normalized === 'gbk' || normalized === 'x-gbk') {
+    return 'gbk';
+  }
+  if (normalized === 'gb18030') {
+    return 'gb18030';
+  }
+  if (normalized === 'utf8') {
+    return 'utf-8';
+  }
+
+  return normalized;
+}
+
+function extractCharsetFromContentType(contentType: string | null | undefined): string | null {
+  if (!contentType) {
+    return null;
+  }
+
+  const match = contentType.match(/charset=([^;]+)/i);
+  return normalizeCharset(match?.[1] ?? null);
+}
+
+function extractCharsetFromHtmlBytes(buffer: Uint8Array): string | null {
+  const probe = Buffer.from(buffer).toString('latin1');
+  const metaCharset = probe.match(/<meta[^>]+charset=["']?\s*([a-z0-9_-]+)/i)?.[1];
+  if (metaCharset) {
+    return normalizeCharset(metaCharset);
+  }
+
+  const contentTypeCharset = probe.match(
+    /<meta[^>]+http-equiv=["']content-type["'][^>]+content=["'][^"']*charset=([a-z0-9_-]+)/i
+  )?.[1];
+  return normalizeCharset(contentTypeCharset ?? null);
+}
+
+function decodeTextBuffer(
+  buffer: Uint8Array,
+  charsetCandidates: Array<string | null | undefined>
+): string {
+  const fallbacks = ['utf-8', 'gb18030', 'gbk'];
+  const charsets = unique(
+    [...charsetCandidates, ...fallbacks]
+      .map((candidate) => normalizeCharset(candidate))
+      .filter((candidate): candidate is string => Boolean(candidate))
+  );
+
+  for (const charset of charsets) {
+    try {
+      return new TextDecoder(charset).decode(buffer);
+    } catch {
+      continue;
+    }
+  }
+
+  return Buffer.from(buffer).toString('utf8');
 }
 
 function guessImageExtension(input: {
@@ -499,6 +797,7 @@ async function writeTextAttachment(input: {
   mimeType?: string | null;
   originalUrl?: string;
   originalFilePath?: string;
+  extractionStatus?: string;
 }): Promise<WorkerAttachment> {
   const targetDir = input.targetDir || defaultTargetDir();
   await mkdir(targetDir, { recursive: true });
@@ -511,6 +810,7 @@ async function writeTextAttachment(input: {
     input.originalUrl ? `原始链接：${input.originalUrl}` : '',
     input.originalFilePath ? `原始附件路径：${input.originalFilePath}` : '',
     input.mimeType ? `MIME Type：${input.mimeType}` : '',
+    input.extractionStatus ? `提取状态：${input.extractionStatus}` : '',
     '',
     '## 提取内容',
     '',
@@ -533,6 +833,202 @@ async function writeTextAttachment(input: {
     originalFilePath: input.originalFilePath,
     title: input.title
   };
+}
+
+function isLikelyMetadataLine(line: string, title?: string): boolean {
+  const compact = line.replace(/\s+/g, '');
+  const compactTitle = title ? title.replace(/\s+/g, '') : '';
+
+  if (compactTitle) {
+    if (compact === compactTitle) {
+      return true;
+    }
+
+    if (compact.length <= 40 && compactTitle.includes(compact)) {
+      return true;
+    }
+  }
+
+  return /(?:3Q中文网|3Qdu|手机版|手机在线阅读版|全文阅读|最新章节|作者[:：]?|章节目录|加入书签|打开书架|由.+创作)/i.test(line);
+}
+
+function extractMeaningfulBodyText(text: string, title?: string): string {
+  const lines = text
+    .split(/\n+/)
+    .map((line) => normalizeWhitespace(line))
+    .filter(Boolean);
+
+  const noisePatterns = [
+    /^首页$/,
+    /^目录$/,
+    /^上一章$/,
+    /^下一章$/,
+    /^上一页$/,
+    /^下一页$/,
+    /^足迹$/,
+    /^关灯$/,
+    /^超大$/,
+    /^大$/,
+    /^中$/,
+    /^小$/,
+    /^介绍$/,
+    /^进书架$/,
+    /^加书签$/,
+    /^加入书签$/,
+    /^本章未完.*继续阅读$/,
+    /^本章已完$/,
+    /^3Qdu手机版/,
+    /^(首页|我的书架|阅读历史)(\s+(首页|我的书架|阅读历史))+$/u,
+    /^分类(\s+排行)?(\s+完本)?(\s+新书)?$/u,
+    /^作品:《/,
+    /^打开书架$/,
+    /^设置背景$/,
+    /^loading\.{0,3}$/iu,
+    /^loading…$/iu,
+    /^please wait\.{0,3}$/iu,
+    /^加载中\.{0,3}$/u
+  ];
+
+  return lines
+    .map((line) => ({
+      raw: line,
+      normalized: line.replace(/^[\-•]+\s*/u, '').trim()
+    }))
+    .filter(({ normalized }) => !noisePatterns.some((pattern) => pattern.test(normalized)))
+    .filter(({ normalized }) => !isLikelyMetadataLine(normalized, title))
+    .filter((line) => {
+      const compact = line.normalized.replace(/\s+/g, '');
+      if (compact.length < 2) {
+        return false;
+      }
+      if (/^[-\d\s、.。]+$/.test(compact)) {
+        return false;
+      }
+      return true;
+    })
+    .map((line) => line.normalized)
+    .join('\n\n');
+}
+
+async function renderHtmlPageInBrowser(
+  url: string,
+  browserRender?: BrowserRenderLike
+): Promise<BrowserRenderResult | null> {
+  if (browserRender) {
+    return await browserRender(url);
+  }
+
+  const executablePath = resolveBrowserExecutable();
+  if (!executablePath) {
+    return null;
+  }
+
+  try {
+    const playwright = await import('playwright-core');
+    const browser = await playwright.chromium.launch({
+      executablePath,
+      headless: true,
+      env: prefersProxyBypass() ? buildBypassProxyEnv() : process.env
+    });
+
+    try {
+      const context = await browser.newContext({
+        userAgent: WEB_FETCH_USER_AGENT,
+        locale: 'zh-CN'
+      });
+      const page = await context.newPage();
+      await page.setExtraHTTPHeaders({
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+      });
+      await page.goto(url, {
+        waitUntil: 'domcontentloaded',
+        timeout: WEB_FETCH_TIMEOUT_MS
+      });
+      await page.waitForLoadState('networkidle', {
+        timeout: BROWSER_IDLE_TIMEOUT_MS
+      }).catch(() => {});
+
+      return {
+        html: await page.content(),
+        finalUrl: page.url()
+      };
+    } finally {
+      await browser.close();
+    }
+  } catch {
+    return null;
+  }
+}
+
+function hasMissingBodySignals(text: string): boolean {
+  return /本章未完.*继续阅读|本章已完|正文未能成功提取|未能从源站公开 HTML 中提取到正文内容/s.test(text);
+}
+
+function shouldSkipBrowserFallback(url: string, html: string, parsedText: string): boolean {
+  let hostname = '';
+  try {
+    hostname = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+
+  if (!hostname.endsWith('3qdu.org')) {
+    return false;
+  }
+
+  const normalized = normalizeWhitespace(parsedText);
+  if (!normalized) {
+    return true;
+  }
+
+  return /本章未完.*继续阅读|本章已完|章节目录|加入书签|打开书架/u.test(normalized)
+    || /id=["']novelcontent["']/i.test(html)
+      && /本章未完.*继续阅读|本章已完/u.test(html);
+}
+
+function buildMissingBodyWarning(): string {
+  return '正文缺失或源站未公开正文';
+}
+
+function buildMissingBodyExplanation(): string {
+  return [
+    '未能从源站公开 HTML 中提取到正文内容。',
+    '当前抓取结果主要是标题、导航或分页提示，可能是源站未在 HTML 中公开正文，或正文需要脚本环境、登录态或额外校验后才可见。',
+    '请不要根据标题、目录或站点框架推断正文细节。'
+  ].join('\n');
+}
+
+function extractNextPageUrl(html: string, currentUrl: string): string | null {
+  const nextHref = html.match(
+    /<a\b[^>]+class=["'][^"']*\bp4\b[^"']*["'][^>]+href=["']([^"']+)["'][^>]*>\s*[^<]*下一页/i
+  )?.[1]
+    || html.match(/var\s+next_page\s*=\s*["']([^"']+)["']/i)?.[1];
+
+  if (!nextHref) {
+    return null;
+  }
+
+  try {
+    const resolved = new URL(nextHref, currentUrl).toString();
+    return resolved === currentUrl ? null : resolved;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchHtmlPage(
+  url: string,
+  fetchImpl: FetchLike
+): Promise<{ html: string; contentType: string | null }> {
+  const remote = await fetchRemoteBufferWithFallback(url, fetchImpl);
+  const contentType = remote.contentType;
+  const buffer = remote.buffer;
+
+  const html = decodeTextBuffer(buffer, [
+    extractCharsetFromContentType(contentType),
+    extractCharsetFromHtmlBytes(buffer)
+  ]);
+  return { html, contentType };
 }
 
 function decodeWechatAesKey(value: string): Buffer {
@@ -921,12 +1417,16 @@ export async function downloadRemoteImage(
   url: string,
   options: DownloadRemoteImageOptions = {}
 ): Promise<WorkerAttachment> {
+  if (looksLikeAbsoluteUrl(url) && options.source !== 'wechat-upload') {
+    await assertSafeRemoteUrl(url);
+  }
+
   const fetchImpl = options.fetchImpl || (globalThis.fetch as FetchLike | undefined);
   if (!fetchImpl) {
     throw new Error('当前环境不支持 fetch，无法下载图片。');
   }
 
-  const response = await fetchImpl(url);
+  const response = await fetchImpl(url, buildWebFetchInit(url));
   ensureValidDownloadResponse(response, url);
   const mimeType = response.headers.get('content-type');
   const buffer = Buffer.from(await response.arrayBuffer());
@@ -1114,7 +1614,7 @@ async function downloadWechatDocument(
   let downloadUrl = candidate.directUrl;
 
   if (candidate.directUrl) {
-    response = await fetchImpl(candidate.directUrl);
+    response = await fetchImpl(candidate.directUrl, buildWebFetchInit(candidate.directUrl));
     ensureValidDownloadResponse(response, candidate.directUrl);
   } else if (candidate.encryptQueryParam) {
     const baseUrl = options.cdnBaseUrl?.trim()
@@ -1130,7 +1630,7 @@ async function downloadWechatDocument(
 
     for (const url of candidateUrls) {
       try {
-        const currentResponse = await fetchImpl(url);
+        const currentResponse = await fetchImpl(url, buildWebFetchInit(url));
         ensureValidDownloadResponse(currentResponse, url);
         response = currentResponse;
         downloadUrl = url;
@@ -1175,33 +1675,117 @@ async function downloadWechatDocument(
 
 export async function downloadUrlContent(
   url: string,
-  options: DownloadRemoteImageOptions = {}
+  options: DownloadUrlContentOptions = {}
 ): Promise<WorkerAttachment> {
+  await assertSafeRemoteUrl(url);
+
   const fetchImpl = options.fetchImpl || (globalThis.fetch as FetchLike | undefined);
   if (!fetchImpl) {
     throw new Error('当前环境不支持 fetch，无法下载链接内容。');
   }
 
-  const response = await fetchImpl(url);
-  ensureValidDownloadResponse(response, url);
-  const contentType = response.headers.get('content-type');
+  let contentType: string | null = null;
+  let buffer: Buffer | null = null;
+
+  try {
+    const response = await fetchImpl(url, buildWebFetchInit(url));
+    ensureValidDownloadResponse(response, url);
+    contentType = response.headers.get('content-type');
+    buffer = Buffer.from(await response.arrayBuffer());
+  } catch {
+    const fallbackPage = await fetchHtmlPage(url, fetchImpl);
+    contentType = fallbackPage.contentType || 'text/html';
+    buffer = Buffer.from(fallbackPage.html, 'utf8');
+  }
+
+  if (!buffer) {
+    throw new Error(`未能下载链接内容: ${url}`);
+  }
 
   if (isHtmlContentType(contentType)) {
-    const html = await response.text();
-    const parsed = htmlToText(html);
+    let currentUrl = url;
+    let html = decodeTextBuffer(buffer, [
+      extractCharsetFromContentType(contentType),
+      extractCharsetFromHtmlBytes(buffer)
+    ]);
+    let parsed = htmlToText(html, currentUrl);
+    let title = parsed.title;
+    const meaningfulSegments: string[] = [];
+    const visited = new Set<string>([currentUrl]);
+
+    const firstMeaningful = parsed.mode === 'readability'
+      ? parsed.text
+      : extractMeaningfulBodyText(parsed.text, title);
+    if (firstMeaningful) {
+      meaningfulSegments.push(firstMeaningful);
+    }
+
+    for (let pageIndex = 1; pageIndex < MAX_WEBPAGE_FOLLOW_PAGES; pageIndex += 1) {
+      if (!hasMissingBodySignals(parsed.text)) {
+        break;
+      }
+
+      const nextUrl = extractNextPageUrl(html, currentUrl);
+      if (!nextUrl || visited.has(nextUrl)) {
+        break;
+      }
+
+      visited.add(nextUrl);
+      const nextPage = await fetchHtmlPage(nextUrl, fetchImpl);
+      html = nextPage.html;
+      currentUrl = nextUrl;
+      parsed = htmlToText(html, currentUrl);
+      title = title || parsed.title;
+
+      const nextMeaningful = parsed.mode === 'readability'
+        ? parsed.text
+        : extractMeaningfulBodyText(parsed.text, title);
+      if (nextMeaningful) {
+        meaningfulSegments.push(nextMeaningful);
+      }
+    }
+
+    const extractedText = meaningfulSegments.length > 0
+      ? normalizeWhitespace(meaningfulSegments.join('\n\n'))
+      : buildMissingBodyExplanation();
+
+    if (meaningfulSegments.length === 0 && !shouldSkipBrowserFallback(url, html, parsed.text)) {
+      const rendered = await renderHtmlPageInBrowser(url, options.browserRender);
+      if (rendered?.html) {
+        const renderedUrl = rendered.finalUrl || url;
+        const renderedParsed = htmlToText(rendered.html, renderedUrl);
+        const renderedMeaningful = renderedParsed.mode === 'readability'
+          ? renderedParsed.text
+          : extractMeaningfulBodyText(renderedParsed.text, renderedParsed.title || title);
+
+        if (renderedMeaningful) {
+          return await writeTextAttachment({
+            text: normalizeWhitespace(renderedMeaningful),
+            targetDir: options.targetDir,
+            type: 'webpage',
+            source: 'url-link',
+            title: renderedParsed.title || title,
+            mimeType: contentType,
+            originalUrl: url
+          });
+        }
+      }
+    }
+
     return await writeTextAttachment({
-      text: parsed.text,
+      text: extractedText,
       targetDir: options.targetDir,
       type: 'webpage',
       source: 'url-link',
-      title: parsed.title,
+      title,
       mimeType: contentType,
-      originalUrl: url
+      originalUrl: url,
+      extractionStatus: meaningfulSegments.length > 0 ? undefined : buildMissingBodyWarning()
     });
   }
 
   if (isTextLikeContentType(contentType) || looksLikeDocumentUrl(url) && TEXT_EXTENSION_RE.test(url)) {
-    const text = await response.text();
+    const text = decodeTextBuffer(buffer, [extractCharsetFromContentType(contentType)]);
     return await writeTextAttachment({
       text: text,
       targetDir: options.targetDir,
@@ -1214,7 +1798,6 @@ export async function downloadUrlContent(
   }
 
   if (isDocumentContentType(contentType) || looksLikeDocumentUrl(url)) {
-    const buffer = Buffer.from(await response.arrayBuffer());
     const rawFile = await writeRawDocumentBuffer({
       buffer,
       targetDir: options.targetDir,

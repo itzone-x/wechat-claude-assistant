@@ -15,6 +15,27 @@
 - 多模态输入
 - `launchd` / 常驻运行
 
+## 硬性发布门禁
+
+从现在开始，影响真实运行链路的改动，必须满足这两个条件后才能上传到 GitHub：
+
+1. 自动化测试通过
+2. 人工真实验收通过，并得到明确确认
+
+这不是建议，是发布门禁。
+
+仓库会在准备版本时自动生成一份人工验收记录：
+
+- `docs/releases/manual-verification-vX.Y.Z.md`
+
+只有当这份文件被更新为：
+
+- `Status: PASS`
+- `Verifier: ...`
+- `Verified-at: ...`
+
+`release:publish` 和 `release:ship` 才会继续执行。否则发布会被直接拦截。
+
 ## 发版前最少要做的事
 
 ```bash
@@ -36,6 +57,14 @@ npm test
 4. 如果本次改动涉及图片、语音、URL 或文件附件，再补一条对应多模态消息
 
 如果这 4 步都正常，通常就足够支撑一次小版本发布。
+
+完成后，把对应版本的人工验收记录补完整，例如：
+
+```md
+Status: PASS
+Verifier: zhoutianyou
+Verified-at: 2026-03-27 23:10
+```
 
 ## 最省事的方式
 
@@ -59,10 +88,12 @@ npm run release:patch -- --title "Stability Update" --slug "stability-update"
 - 把 `CHANGELOG.md` 里的 `[Unreleased]` 提升成新版本
 - 生成 `docs/releases/vX.Y.Z-*.md`
 - 生成 `docs/releases/github-release-vX.Y.Z.md`
+- 生成 `docs/releases/manual-verification-vX.Y.Z.md`
 - 更新 `README.md`、`USAGE.md` 的最新发布说明链接
 - 更新 GitHub 元信息里的推荐 release 标题
 
 如果 `[Unreleased]` 为空，脚本默认会中止，避免发一个没有内容的版本。
+如果人工验收记录仍然是 `PENDING`，后续 `release:publish` 和 `release:ship` 也会中止。
 
 仓库也内置了 GitHub Release 发布命令：
 
@@ -89,6 +120,7 @@ npm run release:ship -- patch --dry-run
 - 自动从 `package.json` 推导 tag，例如 `v0.1.1`
 - 自动从 `git remote origin` 推导 GitHub 仓库
 - 自动读取 `docs/releases/github-release-vX.Y.Z.md`
+- 自动检查 `docs/releases/manual-verification-vX.Y.Z.md` 是否已人工验收通过
 - 如果该 tag 的 Release 已存在，就更新；不存在就创建
 
 也可以显式指定：
@@ -112,13 +144,15 @@ npm run release:minor
 npm run release:major
 ```
 
-2. 运行验证
+2. 跑自动化验证
 
 ```bash
 npm test
 ```
 
-3. 提交、打 tag、推送
+3. 完成人工真实验收，并把 `docs/releases/manual-verification-vX.Y.Z.md` 更新为 `PASS`
+
+4. 提交、打 tag、推送
 
 ```bash
 git add .
@@ -128,7 +162,7 @@ git push origin main
 git push origin vX.Y.Z
 ```
 
-4. 创建 GitHub Release  
+5. 创建 GitHub Release
    推荐直接运行：
 
 ```bash

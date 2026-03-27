@@ -1,5 +1,7 @@
+import { readFile } from 'node:fs/promises';
+
 import type { InstallConfig } from '../types/install.js';
-import type { WorkerMessage } from '../types/ilink.js';
+import type { WorkerAttachment, WorkerMessage } from '../types/ilink.js';
 import {
   buildTaskPreview,
   clearConversationStatus,
@@ -87,6 +89,49 @@ function buildMessageTaskPreview(message: WorkerMessage): string {
   }
 
   return '';
+}
+
+function stripWorkerBoilerplateSummary(text: string): string {
+  return text
+    .replace(/\n{0,2}\*{0,2}总结[:：]\*{0,2}[\s\S]*$/u, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+async function hasMissingBodyMarker(attachment: WorkerAttachment): Promise<boolean> {
+  if (attachment.type !== 'webpage' && attachment.type !== 'document') {
+    return false;
+  }
+
+  try {
+    const preview = await readFile(attachment.filePath, 'utf8');
+    return /提取状态：正文缺失或源站未公开正文/u.test(preview);
+  } catch {
+    return false;
+  }
+}
+
+async function buildUnavailableContentReply(message: WorkerMessage): Promise<string | null> {
+  const attachments = message.attachments || [];
+  if (attachments.length === 0) {
+    return null;
+  }
+
+  const unsupported = attachments.filter((attachment) => attachment.type === 'webpage' || attachment.type === 'document');
+  if (unsupported.length === 0 || unsupported.length !== attachments.length) {
+    return null;
+  }
+
+  const markers = await Promise.all(unsupported.map((attachment) => hasMissingBodyMarker(attachment)));
+  if (!markers.every(Boolean)) {
+    return null;
+  }
+
+  return [
+    '这个链接或附件的正文未能从公开页面中提取到。',
+    '当前只能拿到标题、导航或站点元信息，无法可靠总结具体内容。',
+    '你可以复制正文再发给我，或者换一个可直接公开访问正文的链接。'
+  ].join('\n');
 }
 
 export class TaskManager {
@@ -245,6 +290,18 @@ export class TaskManager {
         completedAt: undefined
       });
 
+      const unavailableReply = await buildUnavailableContentReply(message);
+      if (unavailableReply) {
+        await updateConversationStatus(conversationId, {
+          stage: 'completed',
+          active: false,
+          summary: shortSummary(unavailableReply),
+          completedAt: new Date().toISOString()
+        });
+        await this.safeReply(unavailableReply, message.fromUserId, message.contextToken);
+        return;
+      }
+
       task.run = this.runner.start({
         conversationId,
         workspaceRoot: this.config.workspaceRoot,
@@ -291,7 +348,8 @@ export class TaskManager {
       const result = await task.run.completion;
 
       if (result.exitCode === 0) {
-        const summary = result.stdout || '任务已完成，但 Claude Code 没有返回可展示的摘要。';
+        const summary = stripWorkerBoilerplateSummary(result.stdout)
+          || '任务已完成，但 Claude Code 没有返回可展示的摘要。';
         await updateConversationStatus(conversationId, {
           stage: 'completed',
           active: false,

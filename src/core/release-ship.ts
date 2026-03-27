@@ -1,4 +1,5 @@
 import { ReleaseKind, bumpVersion } from './release.js';
+import { manualVerificationPathForTag } from './release-gate.js';
 
 export interface ReleaseShipOptions {
   kind: ReleaseKind;
@@ -102,11 +103,13 @@ export function buildShipPlanSummary(
   const nextVersion = nextReleaseVersion(currentVersion, options);
   const tag = releaseTag(nextVersion);
   const publishMode = options.skipPublish ? 'skip' : hasPublishToken ? 'publish' : 'manual';
+  const verificationPath = manualVerificationPathForTag(tag);
 
   return [
     `当前版本: v${currentVersion}`,
     `目标版本: ${tag}`,
     `发布类型: ${options.kind}`,
+    `人工验收记录: ${verificationPath}`,
     `发布提交: ${releaseCommitMessage(nextVersion)}`,
     `GitHub Release: ${publishMode}`,
   ].join('\n');
