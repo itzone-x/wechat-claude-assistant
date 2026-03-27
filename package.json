@@ -1,6 +1,6 @@
 {
   "name": "wechat-claude-assistant",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "微信 Claude Code 助手 - worker-first 的本地微信派活工具，兼容高级 Channels 模式",
   "type": "module",
   "main": "dist/cli.js",

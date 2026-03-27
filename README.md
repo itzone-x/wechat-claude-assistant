@@ -362,7 +362,7 @@ WeChat Bridge Core
 如果你想继续看：
 
 - 版本变更：[`CHANGELOG.md`](CHANGELOG.md)
-- 发布说明：[`docs/releases/v0.1.0-worker-first.md`](docs/releases/v0.1.0-worker-first.md)
+- 发布说明：[`docs/releases/v0.1.1-stability-and-onboarding.md`](docs/releases/v0.1.1-stability-and-onboarding.md)
 - 产品与架构说明：[`docs/product/wechat-claude-code-assistant-overview.md`](docs/product/wechat-claude-code-assistant-overview.md)
 - 高级模式说明：[`docs/advanced/channels-mode.md`](docs/advanced/channels-mode.md)
 - 使用指南：[`USAGE.md`](USAGE.md)

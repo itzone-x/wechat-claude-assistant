@@ -54,9 +54,9 @@ Use WeChat as a worker-first remote task entry for local Claude Code, with optio
 - `typescript`
 - `local-first`
 
-## 3. 首个 Release 标题
+## 3. 当前推荐 Release 标题
 
-`v0.1.0 · Worker-First Public Release`
+`v0.1.1 · Stability and Onboarding Update`
 
 ## 4. 首个 Release 摘要
 

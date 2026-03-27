@@ -35,6 +35,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-03-27
+
 ### Added
 - Added multimodal worker input support for native image uploads, image-only tasks, and image URLs embedded in text.
 - Added local image staging so Claude Code can read downloaded image files together with the user task.
