@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Added `release:publish` so GitHub Releases can be created or updated directly from the repository using local release notes and a GitHub token.
+- Added `release:ship` so version prep, tests, commit, tag, push, and Release publishing can be chained into one command when the worktree is clean.
+
 ## [0.1.1] - 2026-03-27
 
 ### Added

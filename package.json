@@ -24,7 +24,11 @@
     "release:patch": "npm run build && node dist/release-cli.js patch",
     "release:minor": "npm run build && node dist/release-cli.js minor",
     "release:major": "npm run build && node dist/release-cli.js major",
-    "release:publish": "npm run build && node dist/release-publish-cli.js"
+    "release:publish": "npm run build && node dist/release-publish-cli.js",
+    "release:ship": "npm run build && node dist/release-ship-cli.js",
+    "release:ship:patch": "npm run release:ship -- patch",
+    "release:ship:minor": "npm run release:ship -- minor",
+    "release:ship:major": "npm run release:ship -- major"
   },
   "keywords": ["claude-code", "wechat", "channel", "agent", "worker"],
   "author": "",

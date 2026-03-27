@@ -61,6 +61,20 @@ npm run release:patch -- --title "Stability Update" --slug "stability-update"
 GITHUB_PERSONAL_ACCESS_TOKEN=你的Token npm run release:publish
 ```
 
+如果你希望把“准备版本 + 测试 + commit + tag + push + publish”串成一次执行，可以直接用：
+
+```bash
+GITHUB_PERSONAL_ACCESS_TOKEN=你的Token npm run release:ship:patch
+GITHUB_PERSONAL_ACCESS_TOKEN=你的Token npm run release:ship:minor
+GITHUB_PERSONAL_ACCESS_TOKEN=你的Token npm run release:ship:major
+```
+
+也支持先看计划不落地：
+
+```bash
+npm run release:ship -- patch --dry-run
+```
+
 默认行为：
 
 - 自动从 `package.json` 推导 tag，例如 `v0.1.1`
@@ -110,6 +124,12 @@ git push origin vX.Y.Z
 
 ```bash
 GITHUB_PERSONAL_ACCESS_TOKEN=你的Token npm run release:publish
+```
+
+如果你不想拆步骤，直接运行：
+
+```bash
+GITHUB_PERSONAL_ACCESS_TOKEN=你的Token npm run release:ship:patch
 ```
 
 ## 当前约定
