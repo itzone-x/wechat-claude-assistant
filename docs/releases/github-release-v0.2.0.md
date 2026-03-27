@@ -1,0 +1,35 @@
+# v0.2.0 · URL and Document Understanding
+
+Worker-first WeChat bridge for local Claude Code, with new capabilities and compatibility-safe updates.
+
+## Included changes
+
+### Added
+- Added `release:publish` so GitHub Releases can be created or updated directly from the repository using local release notes and a GitHub token.
+- Added `release:ship` so version prep, tests, commit, tag, push, and Release publishing can be chained into one command when the worktree is clean.
+- Added webpage URL ingestion so normal site links and article links can be fetched, converted into readable text, and interpreted together with the user's question.
+- Added generic document attachment ingestion for uploaded `pdf`, `doc`, `docx`, `xlsx`, `pptx`, `md`, `txt`, and similar files in worker mode.
+
+### Changed
+- Changed the worker input pipeline so webpage content, document previews, and user text are interpreted together instead of treating non-image links as plain text only.
+- Changed advanced-mode channel notifications to describe webpage and document attachments, not just image hints.
+
+### Fixed
+- Fixed WeChat file attachments being misclassified as image payloads during media extraction.
+
+## Recommended first check
+
+```bash
+node dist/cli.js status
+```
+
+If this release affects long-running worker behavior, also verify:
+
+```bash
+node dist/cli.js service status
+```
+
+## Links
+
+- Repository: https://github.com/itzone-x/wechat-claude-assistant
+- README: https://github.com/itzone-x/wechat-claude-assistant/blob/main/README.md

@@ -64,8 +64,8 @@ Worker-first WeChat bridge for local Claude Code, with text, image, and voice in
 
 ## Recommended Release Title
 
-`v0.1.1 · Stability and Onboarding Update`
+`v0.2.0 · URL and Document Understanding`
 
 ## Recommended Release One-Liner
 
-Worker-first WeChat bridge for local Claude Code, with multimodal input, stronger session recovery, and a smoother install flow for real daily use.
+Worker-first WeChat bridge for local Claude Code, with new capabilities and compatibility-safe updates.

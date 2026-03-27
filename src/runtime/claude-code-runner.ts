@@ -87,27 +87,46 @@ export function buildClaudeWorkerPrompt(input: {
   const attachments = input.attachments || [];
   const imageCount = attachments.filter((attachment) => attachment.type === 'image').length;
   const audioCount = attachments.filter((attachment) => attachment.type === 'audio').length;
+  const documentCount = attachments.filter((attachment) => attachment.type === 'document').length;
+  const webpageCount = attachments.filter((attachment) => attachment.type === 'webpage').length;
   const attachmentLines = attachments.map((attachment, index) => {
     const sourceLabel = attachment.source === 'wechat-upload'
       ? '微信上传'
-      : '图片链接';
-    const itemLabel = attachment.type === 'image' ? '图片' : '语音';
+      : attachment.source === 'image-link'
+        ? '图片链接'
+        : '网址链接';
+    const itemLabel = attachment.type === 'image'
+      ? '图片'
+      : attachment.type === 'audio'
+        ? '语音'
+        : attachment.type === 'webpage'
+          ? '网页'
+          : '文档';
     const extra = attachment.originalUrl ? `；原始链接: ${attachment.originalUrl}` : '';
-    return `${itemLabel} ${index + 1}: ${attachment.filePath}（来源: ${sourceLabel}${extra}）`;
+    const originalFile = attachment.originalFilePath
+      ? `；原始附件: ${attachment.originalFilePath}`
+      : '';
+    const title = attachment.title ? `；标题: ${attachment.title}` : '';
+    return `${itemLabel} ${index + 1}: ${attachment.filePath}（来源: ${sourceLabel}${title}${extra}${originalFile}）`;
   });
 
   return [
     '你正在处理一个来自微信的本地开发任务。',
     `请在工作目录 ${input.workspaceRoot} 内完成任务。`,
     '不要调用任何 MCP、插件或微信回复工具；worker 会自动把你的最终文字结果回传到微信。',
-    imageCount > 0 || audioCount > 0
+    imageCount > 0 || audioCount > 0 || documentCount > 0 || webpageCount > 0
       ? `本次任务还附带${[
           imageCount > 0 ? `图片输入（${imageCount} 张）` : '',
-          audioCount > 0 ? `语音输入（${audioCount} 段）` : ''
+          audioCount > 0 ? `语音输入（${audioCount} 段）` : '',
+          documentCount > 0 ? `文档输入（${documentCount} 个）` : '',
+          webpageCount > 0 ? `网页内容（${webpageCount} 个）` : ''
         ].filter(Boolean).join('、')}，请结合这些输入与用户文字一起理解和回答。`
       : '',
     audioCount > 0
       ? '如果任务文本里已经包含微信自动转写的语音内容，请优先结合该转写；语音文件路径可作为补充上下文。'
+      : '',
+    documentCount > 0 || webpageCount > 0
+      ? '文档和网页附件通常已经被预处理成可直接阅读的文本预览，请优先阅读这些预览文件。'
       : '',
     ...attachmentLines,
     attachments.length > 0 && !input.taskText.trim()

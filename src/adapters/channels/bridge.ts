@@ -100,10 +100,18 @@ export function buildChannelNotification(message: WorkerMessage): ChannelNotific
   const attachments = message.attachments || [];
   if (attachments.length > 0) {
     parts.push('');
-    parts.push(`用户还发送了 ${attachments.length} 张图片，请结合图片一起理解。`);
+    parts.push(`用户还发送了 ${attachments.length} 个附件，请结合这些输入一起理解。`);
     attachments.forEach((attachment, index) => {
+      const label = attachment.type === 'image'
+        ? '图片'
+        : attachment.type === 'audio'
+          ? '语音'
+          : attachment.type === 'webpage'
+            ? '网页'
+            : '文档';
       const originalUrl = attachment.originalUrl ? `，原始链接: ${attachment.originalUrl}` : '';
-      parts.push(`图片 ${index + 1}: ${attachment.filePath}${originalUrl}`);
+      const title = attachment.title ? `，标题: ${attachment.title}` : '';
+      parts.push(`${label} ${index + 1}: ${attachment.filePath}${title}${originalUrl}`);
     });
   }
 

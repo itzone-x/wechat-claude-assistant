@@ -25,6 +25,10 @@ It supports:
 - image
 - image + text
 - image links
+- webpage URLs
+- webpage URLs + text
+- uploaded documents (`pdf`, `docx`, `xlsx`, `pptx`, `md`, `txt`, ...)
+- documents + text
 - voice
 - voice + text
 
@@ -131,6 +135,10 @@ node dist/cli.js status
 - 图片
 - 图片 + 文字
 - 图片链接
+- 网页链接
+- 网页链接 + 文字
+- 文件附件
+- 文件附件 + 文字
 - 语音
 - 语音 + 文字
 
@@ -260,6 +268,10 @@ node dist/cli.js status
 - 直接发图片，让 Claude 只看图回答
 - 发图片再补一句话，让 Claude 结合图片和文字一起理解
 - 直接发图片链接，只要链接最终返回的是图片，也会先下载到本地再交给 Claude
+- 直接发网页链接或公众号文章链接，bridge 会先抓取网页正文，再把可读文本交给 Claude
+- 发网页链接再补一句话，让 Claude 结合网页内容和你的问题一起理解
+- 直接上传文件附件，例如 `pdf`、`docx`、`xlsx`、`pptx`、`md`、`txt`
+- 上传文件后再补一句话，让 Claude 结合附件内容和你的问题一起理解
 - 直接发语音，优先使用微信自动转写内容理解；如果语音媒体可下载，也会把语音文件一并交给 worker
 - 发语音再补一句话，让 Claude 结合转写文本、语音附件和文字一起理解
 
@@ -271,6 +283,14 @@ node dist/cli.js status
 
 ```text
 请结合这张页面截图和我上面的描述，帮我判断 UI 为什么错位。
+```
+
+```text
+请看这篇文章：https://example.com/article ，帮我提炼 3 个重点。
+```
+
+```text
+我刚上传了一份 PDF，请结合文件内容告诉我核心结论。
 ```
 
 worker 默认更安静：
@@ -309,6 +329,9 @@ node dist/cli.js start --mode channels
 - 真实任务执行与结果回传
 - 图片链接下载与多模态任务透传
 - 纯图片任务与图片 + 文字混合理解
+- 普通网页链接与公众号文章链接抓取
+- `pdf` / `docx` / `xlsx` / `pptx` / `md` / `txt` 等附件透传与可读预处理
+- 网页、附件和文字混合理解
 - 微信语音转写接入与语音附件透传
 - 入站消息去重与重复回复稳定性修复
 - 后台 worker 运行
@@ -319,7 +342,7 @@ node dist/cli.js start --mode channels
 
 自动化测试当前为：
 
-- `72 / 72`
+- `88 / 88`
 
 ## 架构一眼看懂
 
@@ -363,7 +386,7 @@ WeChat Bridge Core
 
 - 版本变更：[`CHANGELOG.md`](CHANGELOG.md)
 - 发布流程：[`RELEASING.md`](RELEASING.md)
-- 发布说明：[`docs/releases/v0.1.1-stability-and-onboarding.md`](docs/releases/v0.1.1-stability-and-onboarding.md)
+- 发布说明：[`docs/releases/v0.2.0-url-and-document-understanding.md`](docs/releases/v0.2.0-url-and-document-understanding.md)
 - 产品与架构说明：[`docs/product/wechat-claude-code-assistant-overview.md`](docs/product/wechat-claude-code-assistant-overview.md)
 - 高级模式说明：[`docs/advanced/channels-mode.md`](docs/advanced/channels-mode.md)
 - 使用指南：[`USAGE.md`](USAGE.md)

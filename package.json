@@ -1,6 +1,6 @@
 {
   "name": "wechat-claude-assistant",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "微信 Claude Code 助手 - worker-first 的本地微信派活工具，兼容高级 Channels 模式",
   "type": "module",
   "main": "dist/cli.js",
@@ -30,7 +30,13 @@
     "release:ship:minor": "npm run release:ship -- minor",
     "release:ship:major": "npm run release:ship -- major"
   },
-  "keywords": ["claude-code", "wechat", "channel", "agent", "worker"],
+  "keywords": [
+    "claude-code",
+    "wechat",
+    "channel",
+    "agent",
+    "worker"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {

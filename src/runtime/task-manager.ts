@@ -49,11 +49,15 @@ function buildMessageTaskPreview(message: WorkerMessage): string {
   const attachments = message.attachments || [];
   const imageCount = attachments.filter((attachment) => attachment.type === 'image').length;
   const audioCount = attachments.filter((attachment) => attachment.type === 'audio').length;
+  const documentCount = attachments.filter((attachment) => attachment.type === 'document').length;
+  const webpageCount = attachments.filter((attachment) => attachment.type === 'webpage').length;
   const attachmentsCount = attachments.length;
   const textPreview = buildTaskPreview(message.text);
   const attachmentSummary = [
     imageCount > 0 ? `${imageCount} 张图片` : '',
-    audioCount > 0 ? `${audioCount} 段语音` : ''
+    audioCount > 0 ? `${audioCount} 段语音` : '',
+    documentCount > 0 ? `${documentCount} 个文档` : '',
+    webpageCount > 0 ? `${webpageCount} 个网页` : ''
   ].filter(Boolean).join('、');
 
   if (textPreview) {
@@ -68,6 +72,14 @@ function buildMessageTaskPreview(message: WorkerMessage): string {
 
   if (audioCount > 0 && imageCount === 0) {
     return `语音任务（${audioCount} 段语音）`;
+  }
+
+  if (documentCount > 0 && imageCount === 0 && audioCount === 0 && webpageCount === 0) {
+    return `文档任务（${documentCount} 个文档）`;
+  }
+
+  if (webpageCount > 0 && imageCount === 0 && audioCount === 0 && documentCount === 0) {
+    return `网页任务（${webpageCount} 个网页）`;
   }
 
   if (attachmentsCount > 0) {

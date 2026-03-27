@@ -6,6 +6,8 @@ import test from 'node:test';
 import { createCipheriv } from 'node:crypto';
 
 import {
+  downloadUrlContent,
+  extractContentUrls,
   downloadRemoteImage,
   extractImageUrls,
   resolveMessageAttachments
@@ -27,6 +29,22 @@ test('extractImageUrls keeps image-like links and drops normal pages', () => {
   ]);
 });
 
+test('extractContentUrls keeps normal URLs and drops image-like links', () => {
+  const urls = extractContentUrls(
+    [
+      '帮我看两个链接：',
+      'https://example.com/article',
+      'https://example.com/report.pdf',
+      'https://example.com/picture.png'
+    ].join(' ')
+  );
+
+  assert.deepEqual(urls, [
+    'https://example.com/article',
+    'https://example.com/report.pdf'
+  ]);
+});
+
 test('downloadRemoteImage stores a fetched image as local attachment', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'wechat-agent-media-'));
   const attachment = await downloadRemoteImage('https://example.com/demo.png', {
@@ -44,6 +62,28 @@ test('downloadRemoteImage stores a fetched image as local attachment', async () 
   assert.match(attachment.filePath, /\.png$/);
   const saved = await readFile(attachment.filePath);
   assert.deepEqual(Array.from(saved), [1, 2, 3, 4]);
+});
+
+test('downloadUrlContent stores html as a webpage attachment', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'wechat-agent-webpage-'));
+  const attachment = await downloadUrlContent('https://example.com/article', {
+    targetDir: dir,
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'text/html; charset=utf-8' }),
+      text: async () => '<html><head><title>演示文章</title></head><body><h1>标题</h1><p>第一段</p><p>第二段</p></body></html>',
+      arrayBuffer: async () => new TextEncoder().encode('').buffer
+    })
+  });
+
+  assert.equal(attachment.type, 'webpage');
+  assert.equal(attachment.source, 'url-link');
+  assert.equal(attachment.title, '演示文章');
+  assert.match(attachment.filePath, /\.md$/);
+  const saved = await readFile(attachment.filePath, 'utf8');
+  assert.match(saved, /演示文章/);
+  assert.match(saved, /第一段/);
 });
 
 test('downloadRemoteImage sniffs image type from bytes when content-type is missing', async () => {
@@ -131,6 +171,61 @@ test('resolveMessageAttachments supports nested media records with non-image_ite
   assert.equal(attachments.length, 1);
   assert.equal(attachments[0].source, 'wechat-upload');
   assert.match(attachments[0].filePath, /\.webp$/);
+});
+
+test('resolveMessageAttachments downloads uploaded file items as document previews', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'wechat-agent-msg-file-'));
+  const attachments = await resolveMessageAttachments({
+    text: '',
+    itemList: [
+      {
+        type: 4,
+        file_item: {
+          file_name: 'notes.md',
+          download_url: 'https://example.com/files/notes.md',
+          mime_type: 'text/markdown'
+        }
+      }
+    ],
+    targetDir: dir,
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'text/markdown' }),
+      text: async () => '# note',
+      arrayBuffer: async () => Buffer.from('# 文档标题\n\n正文内容').buffer
+    }) as Response
+  });
+
+  assert.equal(attachments.length, 1);
+  assert.equal(attachments[0].type, 'document');
+  assert.equal(attachments[0].source, 'wechat-upload');
+  assert.ok(attachments[0].originalFilePath);
+  const preview = await readFile(attachments[0].filePath, 'utf8');
+  assert.match(preview, /正文内容/);
+  assert.match(preview, /原始附件路径/);
+});
+
+test('resolveMessageAttachments downloads normal URLs as webpage attachments', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'wechat-agent-msg-url-'));
+  const attachments = await resolveMessageAttachments({
+    text: '请看 https://example.com/article',
+    itemList: [],
+    targetDir: dir,
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'text/html' }),
+      text: async () => '<html><head><title>文章标题</title></head><body><p>正文段落</p></body></html>',
+      arrayBuffer: async () => Buffer.from('').buffer
+    }) as Response
+  });
+
+  assert.equal(attachments.length, 1);
+  assert.equal(attachments[0].type, 'webpage');
+  const preview = await readFile(attachments[0].filePath, 'utf8');
+  assert.match(preview, /文章标题/);
+  assert.match(preview, /正文段落/);
 });
 
 test('resolveMessageAttachments treats opaque pic_url token as encrypted query param', async () => {

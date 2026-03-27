@@ -145,6 +145,36 @@ test('worker prompt includes audio attachment paths when provided', () => {
   assert.match(prompt, /请根据语音内容回答/);
 });
 
+test('worker prompt includes document and webpage attachment hints when provided', () => {
+  const prompt = buildClaudeWorkerPrompt({
+    workspaceRoot: '/tmp/project',
+    taskText: '请结合文章和附件总结',
+    attachments: [
+      {
+        type: 'webpage',
+        source: 'url-link',
+        filePath: '/tmp/input/article-preview.md',
+        title: '公众号文章标题',
+        originalUrl: 'https://example.com/article'
+      },
+      {
+        type: 'document',
+        source: 'wechat-upload',
+        filePath: '/tmp/input/report-preview.md',
+        originalFilePath: '/tmp/input/report.pdf',
+        fileName: 'report.pdf'
+      }
+    ]
+  });
+
+  assert.match(prompt, /网页内容（1 个）/);
+  assert.match(prompt, /文档输入（1 个）/);
+  assert.match(prompt, /article-preview\.md/);
+  assert.match(prompt, /report-preview\.md/);
+  assert.match(prompt, /原始附件: \/tmp\/input\/report\.pdf/);
+  assert.match(prompt, /标题: 公众号文章标题/);
+});
+
 test('parseWorkerCommand recognizes reset', () => {
   assert.deepEqual(parseWorkerCommand('/reset'), { type: 'reset' });
   assert.deepEqual(parseWorkerCommand('/echo 你好'), { type: 'echo', text: '你好' });

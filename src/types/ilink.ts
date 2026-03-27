@@ -21,12 +21,14 @@ export interface QRStatusResponse {
 }
 
 export interface WorkerAttachment {
-  type: 'image' | 'audio';
-  source: 'wechat-upload' | 'image-link';
+  type: 'image' | 'audio' | 'document' | 'webpage';
+  source: 'wechat-upload' | 'image-link' | 'url-link';
   filePath: string;
   mimeType?: string;
   fileName?: string;
   originalUrl?: string;
+  originalFilePath?: string;
+  title?: string;
 }
 
 export interface WorkerMessage {

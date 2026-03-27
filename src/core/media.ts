@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { createDecipheriv, randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
@@ -7,12 +8,16 @@ import type { WorkerAttachment } from '../types/ilink.js';
 
 const IMAGE_EXTENSION_RE = /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif)(?:$|[?#])/i;
 const AUDIO_EXTENSION_RE = /\.(wav|mp3|ogg|m4a|aac|flac|silk)(?:$|[?#])/i;
+const DOCUMENT_EXTENSION_RE = /\.(pdf|docx?|xlsx?|pptx?|csv|tsv|md|markdown|txt|rtf|json|ya?ml|xml|html?)(?:$|[?#])/i;
+const TEXT_EXTENSION_RE = /\.(md|markdown|txt|csv|tsv|json|ya?ml|xml|html?|rtf|log|ini|toml|conf|properties|sql)(?:$|[?#])/i;
+const MAX_URL_CONTENT_ATTACHMENTS = 3;
 
 interface FetchResponseLike {
   ok: boolean;
   status: number;
   headers: Pick<Headers, 'get'>;
   arrayBuffer(): Promise<ArrayBuffer>;
+  text(): Promise<string>;
 }
 
 type FetchLike = (
@@ -49,6 +54,10 @@ function looksLikeImageUrl(url: string): boolean {
   return IMAGE_EXTENSION_RE.test(url);
 }
 
+function looksLikeDocumentUrl(url: string): boolean {
+  return DOCUMENT_EXTENSION_RE.test(url);
+}
+
 function looksLikeAbsoluteUrl(value: string): boolean {
   return /^https?:\/\//i.test(value);
 }
@@ -59,6 +68,10 @@ function looksLikeRelativeMediaPath(value: string): boolean {
 
 function unique<T>(items: T[]): T[] {
   return Array.from(new Set(items));
+}
+
+function extractUrls(text: string): string[] {
+  return unique(text.match(/https?:\/\/[^\s<>"')]+/gi) || []);
 }
 
 function firstString(...values: unknown[]): string | undefined {
@@ -82,10 +95,14 @@ function looksLikeMediaRecord(value: unknown): value is Record<string, unknown> 
     'download_url',
     'pic_url',
     'cdn_url',
+    'file_url',
     'encrypt_query_param',
     'aeskey',
     'aes_key',
-    'file_name'
+    'file_name',
+    'mime_type',
+    'content_type',
+    'title'
   ].some((key) => key in record);
 }
 
@@ -122,6 +139,71 @@ function ensureValidDownloadResponse(response: FetchResponseLike, source: string
   if (!response.ok) {
     throw new Error(`下载媒体失败: HTTP ${response.status} (${source})`);
   }
+}
+
+function decodeHtmlEntities(input: string): string {
+  return input
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
+}
+
+function normalizeWhitespace(input: string): string {
+  return input
+    .replace(/\r/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function htmlToText(html: string): { title?: string; text: string } {
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
+    || html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
+  const title = titleMatch?.[1] ? decodeHtmlEntities(titleMatch[1]).trim() : undefined;
+
+  const text = normalizeWhitespace(
+    decodeHtmlEntities(
+      html
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+        .replace(/<(br|\/p|\/div|\/li|\/h\d|\/tr)>/gi, '\n')
+        .replace(/<[^>]+>/g, ' ')
+    )
+  );
+
+  return { title, text };
+}
+
+function xmlToText(xml: string): string {
+  return normalizeWhitespace(
+    decodeHtmlEntities(
+      xml
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+    )
+  );
+}
+
+function isHtmlContentType(contentType: string | null | undefined): boolean {
+  return Boolean(contentType && /text\/html|application\/xhtml\+xml/i.test(contentType));
+}
+
+function isTextLikeContentType(contentType: string | null | undefined): boolean {
+  return Boolean(
+    contentType
+    && /^(text\/|application\/(json|xml|yaml|x-yaml|javascript|csv|markdown))/i.test(contentType)
+  );
+}
+
+function isDocumentContentType(contentType: string | null | undefined): boolean {
+  return Boolean(
+    contentType
+    && /(application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument|application\/vnd\.ms-|application\/rtf)/i.test(contentType)
+  );
 }
 
 function guessImageExtension(input: {
@@ -171,6 +253,35 @@ function guessAudioExtension(input: {
   if (mimeType === 'audio/silk') return '.silk';
 
   return '.audio';
+}
+
+function guessDocumentExtension(input: {
+  url?: string;
+  fileName?: string;
+  mimeType?: string | null;
+}): string {
+  const fromName = extname(input.fileName || '').toLowerCase();
+  if (fromName) {
+    return fromName;
+  }
+
+  const mimeType = input.mimeType?.toLowerCase() || '';
+  if (mimeType === 'application/pdf') return '.pdf';
+  if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return '.docx';
+  if (mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') return '.pptx';
+  if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return '.xlsx';
+  if (mimeType === 'application/msword') return '.doc';
+  if (mimeType === 'text/markdown') return '.md';
+  if (mimeType === 'text/plain') return '.txt';
+
+  if (input.url) {
+    const match = DOCUMENT_EXTENSION_RE.exec(input.url);
+    if (match?.[1]) {
+      return `.${match[1].toLowerCase()}`;
+    }
+  }
+
+  return '.bin';
 }
 
 function sniffImageMimeType(buffer: Uint8Array): string | undefined {
@@ -284,9 +395,9 @@ async function silkToWav(silkBuf: Buffer): Promise<Buffer | null> {
 }
 
 function sanitizeBaseName(value?: string): string {
-  const base = basename(value || 'image', extname(value || ''));
+  const base = basename(value || 'attachment', extname(value || ''));
   const sanitized = base.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
-  return sanitized || 'image';
+  return sanitized || 'attachment';
 }
 
 async function writeImageBuffer(input: {
@@ -354,6 +465,76 @@ async function writeAudioBuffer(input: {
   };
 }
 
+async function writeRawDocumentBuffer(input: {
+  buffer: Uint8Array;
+  targetDir?: string;
+  mimeType?: string | null;
+  fileName?: string;
+  originalUrl?: string;
+}): Promise<{ filePath: string; mimeType?: string }> {
+  const targetDir = input.targetDir || defaultTargetDir();
+  await mkdir(targetDir, { recursive: true });
+
+  const extension = guessDocumentExtension({
+    url: input.originalUrl,
+    fileName: input.fileName,
+    mimeType: input.mimeType
+  });
+  const filePath = join(
+    targetDir,
+    `${sanitizeBaseName(input.fileName || input.originalUrl || 'document')}-${randomUUID()}${extension}`
+  );
+
+  await writeFile(filePath, input.buffer);
+  return { filePath, mimeType: input.mimeType || undefined };
+}
+
+async function writeTextAttachment(input: {
+  text: string;
+  targetDir?: string;
+  type: 'document' | 'webpage';
+  source: WorkerAttachment['source'];
+  fileName?: string;
+  title?: string;
+  mimeType?: string | null;
+  originalUrl?: string;
+  originalFilePath?: string;
+}): Promise<WorkerAttachment> {
+  const targetDir = input.targetDir || defaultTargetDir();
+  await mkdir(targetDir, { recursive: true });
+
+  const previewTitle = input.type === 'webpage' ? '网页内容' : '文档内容预览';
+  const previewBody = [
+    `# ${previewTitle}`,
+    input.title ? `标题：${input.title}` : '',
+    input.fileName ? `原始文件名：${input.fileName}` : '',
+    input.originalUrl ? `原始链接：${input.originalUrl}` : '',
+    input.originalFilePath ? `原始附件路径：${input.originalFilePath}` : '',
+    input.mimeType ? `MIME Type：${input.mimeType}` : '',
+    '',
+    '## 提取内容',
+    '',
+    input.text.trim() || '未能提取正文内容。'
+  ].filter(Boolean).join('\n');
+
+  const filePath = join(
+    targetDir,
+    `${sanitizeBaseName(input.title || input.fileName || input.originalUrl || previewTitle)}-${randomUUID()}.md`
+  );
+
+  await writeFile(filePath, `${previewBody}\n`, 'utf8');
+  return {
+    type: input.type,
+    source: input.source,
+    filePath,
+    mimeType: input.mimeType || 'text/markdown',
+    fileName: input.fileName,
+    originalUrl: input.originalUrl,
+    originalFilePath: input.originalFilePath,
+    title: input.title
+  };
+}
+
 function decodeWechatAesKey(value: string): Buffer {
   const key = value.trim();
   if (/^[0-9a-f]{32}$/i.test(key)) {
@@ -398,6 +579,92 @@ function buildWechatMediaUrlCandidates(baseUrl: string, encryptQueryParam: strin
   ]);
 }
 
+function runCapture(command: string, args: string[], input?: Buffer): string | null {
+  const result = spawnSync(command, args, {
+    input,
+    encoding: 'utf8',
+    maxBuffer: 10 * 1024 * 1024
+  });
+
+  if (result.error || result.status !== 0) {
+    return null;
+  }
+
+  return String(result.stdout || '').trim();
+}
+
+function extractOoxmlText(filePath: string, patterns: RegExp[]): string | null {
+  const entryList = runCapture('unzip', ['-Z1', filePath]);
+  if (!entryList) {
+    return null;
+  }
+
+  const entries = entryList
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && patterns.some((pattern) => pattern.test(line)));
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  const texts = entries.map((entry) => {
+    const xml = runCapture('unzip', ['-p', filePath, entry]);
+    return xml ? xmlToText(xml) : '';
+  }).filter(Boolean);
+
+  return texts.length > 0 ? normalizeWhitespace(texts.join('\n\n')) : null;
+}
+
+function extractDocumentTextFromFile(filePath: string, mimeType?: string | null): string | null {
+  const extension = extname(filePath).toLowerCase();
+
+  if (TEXT_EXTENSION_RE.test(extension)) {
+    const text = runCapture('cat', [filePath]);
+    return text ? normalizeWhitespace(text) : null;
+  }
+
+  if (extension === '.doc' || extension === '.docx' || mimeType === 'application/msword') {
+    const textutil = runCapture('textutil', ['-convert', 'txt', '-stdout', filePath]);
+    if (textutil) {
+      return normalizeWhitespace(textutil);
+    }
+  }
+
+  if (extension === '.pdf' || mimeType === 'application/pdf') {
+    const pdftotext = runCapture('pdftotext', ['-layout', filePath, '-']);
+    if (pdftotext) {
+      return normalizeWhitespace(pdftotext);
+    }
+    const strings = runCapture('strings', ['-n', '6', filePath]);
+    if (strings) {
+      return normalizeWhitespace(strings);
+    }
+    return null;
+  }
+
+  if (extension === '.docx') {
+    return extractOoxmlText(filePath, [
+      /^word\/document\.xml$/,
+      /^word\/header\d+\.xml$/,
+      /^word\/footer\d+\.xml$/
+    ]);
+  }
+
+  if (extension === '.pptx') {
+    return extractOoxmlText(filePath, [/^ppt\/slides\/slide\d+\.xml$/]);
+  }
+
+  if (extension === '.xlsx') {
+    return extractOoxmlText(filePath, [
+      /^xl\/sharedStrings\.xml$/,
+      /^xl\/worksheets\/sheet\d+\.xml$/
+    ]);
+  }
+
+  return null;
+}
+
 function extractWechatImageCandidate(item: unknown): {
   directUrl?: string;
   encryptQueryParam?: string;
@@ -409,8 +676,13 @@ function extractWechatImageCandidate(item: unknown): {
   }
 
   const record = item as Record<string, unknown>;
+  if (!record.image_item && (record.file_item || record.document_item)) {
+    return null;
+  }
   const searchRoot = { ...record };
   delete searchRoot.voice_item;
+  delete searchRoot.file_item;
+  delete searchRoot.document_item;
   const nestedImageContainer = findMediaRecord(searchRoot);
   const imageContainer = typeof record.image_item === 'object' && record.image_item
     ? record.image_item as Record<string, unknown>
@@ -511,6 +783,74 @@ function extractWechatVoiceCandidate(item: unknown): {
   };
 }
 
+function extractWechatFileCandidate(item: unknown): {
+  directUrl?: string;
+  encryptQueryParam?: string;
+  aesKey?: string;
+  fileName?: string;
+  mimeType?: string;
+} | null {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) {
+    return null;
+  }
+
+  const record = item as Record<string, unknown>;
+  const fileItem = typeof record.file_item === 'object' && record.file_item
+    ? record.file_item as Record<string, unknown>
+    : typeof record.document_item === 'object' && record.document_item
+      ? record.document_item as Record<string, unknown>
+      : null;
+  const media = fileItem && typeof fileItem.media === 'object' && fileItem.media
+    ? fileItem.media as Record<string, unknown>
+    : {};
+
+  if (!fileItem && !looksLikeMediaRecord(record)) {
+    return null;
+  }
+
+  const candidateRoot = fileItem || record;
+  const directUrlCandidate = firstString(
+    candidateRoot.file_url,
+    candidateRoot.url,
+    candidateRoot.download_url,
+    media.file_url,
+    media.url,
+    media.download_url,
+    media.pic_url
+  );
+  const normalizedDirectUrl = directUrlCandidate && (
+    looksLikeAbsoluteUrl(directUrlCandidate) || looksLikeRelativeMediaPath(directUrlCandidate)
+  )
+    ? directUrlCandidate
+    : undefined;
+
+  return {
+    directUrl: normalizedDirectUrl,
+    encryptQueryParam: firstString(
+      candidateRoot.encrypt_query_param,
+      media.encrypt_query_param,
+      directUrlCandidate && !normalizedDirectUrl ? directUrlCandidate : undefined
+    ),
+    aesKey: firstString(
+      candidateRoot.aeskey,
+      candidateRoot.aes_key,
+      media.aeskey,
+      media.aes_key
+    ),
+    fileName: firstString(
+      candidateRoot.file_name,
+      candidateRoot.name,
+      media.file_name
+    ),
+    mimeType: firstString(
+      candidateRoot.mime_type,
+      candidateRoot.content_type,
+      media.mime_type,
+      media.content_type
+    )
+  };
+}
+
 function summarizeMediaCandidate(
   candidate: {
     directUrl?: string;
@@ -570,8 +910,11 @@ function summarizeMediaCandidate(
 }
 
 export function extractImageUrls(text: string): string[] {
-  const matches = text.match(/https?:\/\/[^\s<>"')]+/gi) || [];
-  return unique(matches.filter((value) => looksLikeImageUrl(value)));
+  return extractUrls(text).filter((value) => looksLikeImageUrl(value));
+}
+
+export function extractContentUrls(text: string): string[] {
+  return extractUrls(text).filter((value) => !looksLikeImageUrl(value));
 }
 
 export async function downloadRemoteImage(
@@ -752,6 +1095,150 @@ async function downloadWechatVoice(
   });
 }
 
+async function downloadWechatDocument(
+  candidate: {
+    directUrl?: string;
+    encryptQueryParam?: string;
+    aesKey?: string;
+    fileName?: string;
+    mimeType?: string;
+  },
+  options: ResolveMessageAttachmentsOptions
+): Promise<WorkerAttachment | null> {
+  const fetchImpl = options.fetchImpl || (globalThis.fetch as FetchLike | undefined);
+  if (!fetchImpl) {
+    throw new Error('当前环境不支持 fetch，无法下载微信附件。');
+  }
+
+  let response: FetchResponseLike | null = null;
+  let downloadUrl = candidate.directUrl;
+
+  if (candidate.directUrl) {
+    response = await fetchImpl(candidate.directUrl);
+    ensureValidDownloadResponse(response, candidate.directUrl);
+  } else if (candidate.encryptQueryParam) {
+    const baseUrl = options.cdnBaseUrl?.trim()
+      || process.env.WECHAT_AGENT_CDN_BASE_URL?.trim()
+      || DEFAULT_CDN_BASE_URL
+      || options.baseUrl?.trim();
+    if (!baseUrl) {
+      throw new Error('缺少微信媒体下载地址，请设置 WECHAT_AGENT_CDN_BASE_URL。');
+    }
+
+    const candidateUrls = buildWechatMediaUrlCandidates(baseUrl, candidate.encryptQueryParam);
+    let lastError: Error | null = null;
+
+    for (const url of candidateUrls) {
+      try {
+        const currentResponse = await fetchImpl(url);
+        ensureValidDownloadResponse(currentResponse, url);
+        response = currentResponse;
+        downloadUrl = url;
+        break;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+      }
+    }
+
+    if (!response) {
+      throw lastError || new Error('下载微信附件失败');
+    }
+  } else {
+    return null;
+  }
+
+  let buffer: Uint8Array = Buffer.from(await response.arrayBuffer());
+  if (candidate.aesKey) {
+    buffer = decryptWechatMediaBuffer(buffer, candidate.aesKey);
+  }
+
+  const rawFile = await writeRawDocumentBuffer({
+    buffer,
+    targetDir: options.targetDir,
+    mimeType: candidate.mimeType || response.headers.get('content-type'),
+    fileName: candidate.fileName,
+    originalUrl: downloadUrl
+  });
+  const extractedText = extractDocumentTextFromFile(rawFile.filePath, rawFile.mimeType);
+
+  return await writeTextAttachment({
+    text: extractedText || '',
+    targetDir: options.targetDir,
+    type: 'document',
+    source: 'wechat-upload',
+    fileName: candidate.fileName,
+    mimeType: rawFile.mimeType,
+    originalUrl: downloadUrl,
+    originalFilePath: rawFile.filePath
+  });
+}
+
+export async function downloadUrlContent(
+  url: string,
+  options: DownloadRemoteImageOptions = {}
+): Promise<WorkerAttachment> {
+  const fetchImpl = options.fetchImpl || (globalThis.fetch as FetchLike | undefined);
+  if (!fetchImpl) {
+    throw new Error('当前环境不支持 fetch，无法下载链接内容。');
+  }
+
+  const response = await fetchImpl(url);
+  ensureValidDownloadResponse(response, url);
+  const contentType = response.headers.get('content-type');
+
+  if (isHtmlContentType(contentType)) {
+    const html = await response.text();
+    const parsed = htmlToText(html);
+    return await writeTextAttachment({
+      text: parsed.text,
+      targetDir: options.targetDir,
+      type: 'webpage',
+      source: 'url-link',
+      title: parsed.title,
+      mimeType: contentType,
+      originalUrl: url
+    });
+  }
+
+  if (isTextLikeContentType(contentType) || looksLikeDocumentUrl(url) && TEXT_EXTENSION_RE.test(url)) {
+    const text = await response.text();
+    return await writeTextAttachment({
+      text: text,
+      targetDir: options.targetDir,
+      type: 'document',
+      source: 'url-link',
+      fileName: options.fileName,
+      mimeType: contentType,
+      originalUrl: url
+    });
+  }
+
+  if (isDocumentContentType(contentType) || looksLikeDocumentUrl(url)) {
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const rawFile = await writeRawDocumentBuffer({
+      buffer,
+      targetDir: options.targetDir,
+      mimeType: contentType,
+      fileName: options.fileName,
+      originalUrl: url
+    });
+    const extractedText = extractDocumentTextFromFile(rawFile.filePath, rawFile.mimeType);
+
+    return await writeTextAttachment({
+      text: extractedText || '',
+      targetDir: options.targetDir,
+      type: 'document',
+      source: 'url-link',
+      fileName: options.fileName,
+      mimeType: rawFile.mimeType,
+      originalUrl: url,
+      originalFilePath: rawFile.filePath
+    });
+  }
+
+  throw new Error(`暂不支持解析该链接内容: ${url}`);
+}
+
 export async function resolveMessageAttachments(
   options: ResolveMessageAttachmentsOptions
 ): Promise<WorkerAttachment[]> {
@@ -762,7 +1249,8 @@ export async function resolveMessageAttachments(
     try {
       const imageCandidate = extractWechatImageCandidate(item);
       const voiceCandidate = extractWechatVoiceCandidate(item);
-      if (!imageCandidate && !voiceCandidate) {
+      const fileCandidate = extractWechatFileCandidate(item);
+      if (!imageCandidate && !voiceCandidate && !fileCandidate) {
         continue;
       }
 
@@ -771,20 +1259,25 @@ export async function resolveMessageAttachments(
             ...options,
             targetDir
           })
-        : await downloadWechatVoice(voiceCandidate!, {
-            ...options,
-            targetDir
-          });
+        : voiceCandidate
+          ? await downloadWechatVoice(voiceCandidate, {
+              ...options,
+              targetDir
+            })
+          : await downloadWechatDocument(fileCandidate!, {
+              ...options,
+              targetDir
+            });
       if (attachment) {
         attachments.push(attachment);
       }
     } catch (error) {
       console.error(
-        `[media] 处理微信图片失败: ${error instanceof Error ? error.message : String(error)}`
+        `[media] 处理微信附件失败: ${error instanceof Error ? error.message : String(error)}`
       );
-      const candidate = extractWechatImageCandidate(item) || extractWechatVoiceCandidate(item);
+      const candidate = extractWechatImageCandidate(item) || extractWechatVoiceCandidate(item) || extractWechatFileCandidate(item);
       if (candidate) {
-        console.error(`[media] 微信图片候选字段: ${summarizeMediaCandidate(candidate, item)}`);
+        console.error(`[media] 微信附件候选字段: ${summarizeMediaCandidate(candidate, item)}`);
       }
     }
   }
@@ -800,6 +1293,21 @@ export async function resolveMessageAttachments(
     } catch (error) {
       console.error(
         `[media] 下载图片链接失败: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  for (const url of extractContentUrls(options.text).slice(0, MAX_URL_CONTENT_ATTACHMENTS)) {
+    try {
+      attachments.push(await downloadUrlContent(url, {
+        targetDir,
+        source: 'url-link',
+        originalUrl: url,
+        fetchImpl: options.fetchImpl
+      }));
+    } catch (error) {
+      console.error(
+        `[media] 下载链接内容失败: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }

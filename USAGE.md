@@ -13,7 +13,7 @@
 如果你要先理解项目定位、架构和使用边界，建议先读：
 
 - [`docs/product/wechat-claude-code-assistant-overview.md`](docs/product/wechat-claude-code-assistant-overview.md)
-- [`docs/releases/v0.1.1-stability-and-onboarding.md`](docs/releases/v0.1.1-stability-and-onboarding.md)
+- [`docs/releases/v0.2.0-url-and-document-understanding.md`](docs/releases/v0.2.0-url-and-document-understanding.md)
 
 ## 前置要求
 
@@ -76,7 +76,9 @@ node dist/cli.js start
 
 - 读取微信消息
 - 用本地 `claude -p` 处理任务
-- 在检测到图片、图片链接或语音时，先把媒体落到本地，再把媒体路径和文字任务一起交给 Claude
+- 在检测到图片、图片链接、网页链接、通用附件或语音时，先把可读内容或原始附件落到本地，再把附件路径和文字任务一起交给 Claude
+- 普通网页和公众号文章链接会先抓取正文内容，再作为网页附件交给 worker
+- `pdf`、`doc`、`docx`、`xlsx`、`pptx`、`md`、`txt` 等附件会优先转成可读预览文件；提取失败时也会保留原始文件路径
 - 语音优先使用微信自动转写文本；如果语音媒体可下载，会把音频文件一并透传给 worker
 - 默认静默，只在任务执行超过 5 秒时回一条简短进度提示
 - 对微信入站消息做短窗口去重，并在 worker 重启后保留短时去重状态，尽量避免重复回复
@@ -156,10 +158,16 @@ WECHAT_AGENT_STATE_DIR=/tmp/wechat-agent-state node dist/cli.js doctor
 - 只发图片
 - 图片 + 文字说明
 - 文字里附图片链接
+- 只发网页链接或公众号文章链接
+- 网页链接 + 文字说明
+- 只传文件附件，例如 `pdf`、`word`、`excel`、`ppt`、`md`
+- 文件附件 + 文字说明
 - 只发语音
 - 语音 + 文字说明
 
 如果图片来自微信原生上传，bridge 会优先按 iLink 消息里的图片字段下载到本地。
+如果文本里包含普通网页链接或公众号文章链接，bridge 会尝试抓取正文并生成网页预览文件。
+如果文件来自微信原生上传，bridge 会优先下载原始文件，并按文件类型尽量提取出可读文本预览。
 如果语音来自微信原生上传，bridge 会优先读取微信自动转写文本；同时会尝试下载语音媒体，并在可用时作为音频附件透传给 worker。
 如果你部署环境的媒体下载域名和登录 `baseUrl` 不一致，可以额外设置：
 
@@ -226,6 +234,8 @@ node dist/cli.js doctor --fix
 - 微信登录 / 轮询
 - `worker` 执行链路
 - 多模态输入
+- URL 内容抓取
+- 文档附件解析
 - 会话恢复
 - `launchd` / 常驻运行
 
@@ -234,7 +244,7 @@ node dist/cli.js doctor --fix
 1. `node dist/cli.js status`
 2. 微信发送 `/echo 你好`
 3. 再发一条普通文本任务
-4. 如果本次改动涉及图片或语音，再补一条对应多模态消息
+4. 如果本次改动涉及图片、语音、URL 或文件附件，再补一条对应多模态消息
 
 ## 旧入口说明
 
