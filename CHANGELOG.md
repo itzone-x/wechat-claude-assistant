@@ -48,6 +48,7 @@ All notable changes to this project will be documented in this file.
 - Changed worker reply behavior to stay quiet by default and send a short `/status` hint only when a task runs longer than 5 seconds.
 - Changed inbound message handling to keep a short-lived dedup snapshot across worker restarts, reducing repeated replies caused by duplicate WeChat deliveries.
 - Changed conversation session storage to scope Claude session mappings by workspace root as well as WeChat user, avoiding cross-project session leakage on the same machine.
+- Changed the install flow so choosing the auto-start preference now attempts to install and start the local launchd worker service immediately, then prints verification steps.
 
 ### Fixed
 - Fixed duplicate worker replies when the same text, voice, or multimodal WeChat message is delivered more than once by the upstream polling API.

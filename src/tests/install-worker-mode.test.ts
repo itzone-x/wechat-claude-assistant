@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import { getDefaultInstallConfig } from '../core/config.js';
+import { buildInstallNextSteps } from '../commands/install.js';
 import { getModeChoices } from '../ui/wizard.js';
 
 test('default install config prefers worker mode', () => {
@@ -35,4 +36,33 @@ test('cli help keeps channels in the advanced section', () => {
   assert.match(result.stdout, /启动微信派活 worker（推荐）/);
   assert.match(result.stdout, /doctor --channels/);
   assert.match(result.stdout, /channels \.\.\. 高级模式配置/);
+});
+
+test('install next steps prefer service verification when auto-start is loaded', () => {
+  const config = getDefaultInstallConfig('/tmp/project');
+  config.preferredAutoStart = true;
+
+  const lines = buildInstallNextSteps(config, {
+    autoStartAttempted: true,
+    autoStartLoaded: true
+  });
+
+  assert.match(lines.join('\n'), /自动启动服务已安装并加载/);
+  assert.match(lines.join('\n'), /service status/);
+  assert.match(lines.join('\n'), /worker 运行中: 是/);
+  assert.match(lines.join('\n'), /\/echo 你好/);
+});
+
+test('install next steps fall back to manual start when auto-start is not loaded', () => {
+  const config = getDefaultInstallConfig('/tmp/project');
+  config.preferredAutoStart = true;
+
+  const lines = buildInstallNextSteps(config, {
+    autoStartAttempted: true,
+    autoStartLoaded: false
+  });
+
+  assert.match(lines.join('\n'), /自动启动服务尚未成功加载/);
+  assert.match(lines.join('\n'), /service install/);
+  assert.match(lines.join('\n'), /start --daemon/);
 });
