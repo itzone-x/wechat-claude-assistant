@@ -13,6 +13,7 @@
 - [README.md](README.md)
 - [USAGE.md](USAGE.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
+- [RELEASING.md](RELEASING.md)
 
 ## 开发环境
 
@@ -42,6 +43,7 @@ npm test
 
 - 优先修主路径，也就是 `worker` 模式
 - 如果改了用户体验或稳定性，顺手更新 `README.md`、`USAGE.md` 和 `CHANGELOG.md`
+- 如果改动已经对用户可感知，按 `RELEASING.md` 判断是否应该发一个明确版本
 - 如果改了消息轮询、会话恢复、并发控制或多模态解析，尽量补对应测试
 - 不要把本地调试文件、个人配置或私有材料提交进仓库
 

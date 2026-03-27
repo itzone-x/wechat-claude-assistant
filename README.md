@@ -319,7 +319,7 @@ node dist/cli.js start --mode channels
 
 自动化测试当前为：
 
-- `67 / 67`
+- `72 / 72`
 
 ## 架构一眼看懂
 
@@ -362,6 +362,7 @@ WeChat Bridge Core
 如果你想继续看：
 
 - 版本变更：[`CHANGELOG.md`](CHANGELOG.md)
+- 发布流程：[`RELEASING.md`](RELEASING.md)
 - 发布说明：[`docs/releases/v0.1.1-stability-and-onboarding.md`](docs/releases/v0.1.1-stability-and-onboarding.md)
 - 产品与架构说明：[`docs/product/wechat-claude-code-assistant-overview.md`](docs/product/wechat-claude-code-assistant-overview.md)
 - 高级模式说明：[`docs/advanced/channels-mode.md`](docs/advanced/channels-mode.md)
@@ -380,6 +381,7 @@ WeChat Bridge Core
 - 安全反馈：[`SECURITY.md`](SECURITY.md)
 - 行为规范：[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 - 许可证：[`LICENSE`](LICENSE)
+- 发布流程：[`RELEASING.md`](RELEASING.md)
 - GitHub 发布清单：[`docs/releases/github-open-source-checklist.md`](docs/releases/github-open-source-checklist.md)
 - GitHub 仓库元信息：[`docs/releases/github-repository-metadata.md`](docs/releases/github-repository-metadata.md)
 
