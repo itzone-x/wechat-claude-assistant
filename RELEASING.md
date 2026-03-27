@@ -28,32 +28,55 @@ npm test
 3. 微信发送 `/echo 你好`
 4. 视改动类型补测文字、图片、语音或并发场景
 
+## 最省事的方式
+
+仓库已经内置了发布准备命令：
+
+```bash
+npm run release:patch
+npm run release:minor
+npm run release:major
+```
+
+如果你想指定发布标题，可以这样跑：
+
+```bash
+npm run release:patch -- --title "Stability Update" --slug "stability-update"
+```
+
+脚本会自动完成这些事情：
+
+- 更新 `package.json` 和 `package-lock.json`
+- 把 `CHANGELOG.md` 里的 `[Unreleased]` 提升成新版本
+- 生成 `docs/releases/vX.Y.Z-*.md`
+- 生成 `docs/releases/github-release-vX.Y.Z.md`
+- 更新 `README.md`、`USAGE.md` 的最新发布说明链接
+- 更新 GitHub 元信息里的推荐 release 标题
+
+如果 `[Unreleased]` 为空，脚本默认会中止，避免发一个没有内容的版本。
+
 ## 标准发布步骤
 
-1. 更新版本号  
-   修改 `package.json` 和 `package-lock.json`
+1. 运行发布准备命令
 
-2. 更新变更说明  
-   修改 `CHANGELOG.md`
+```bash
+npm run release:patch
+```
 
-3. 补发布文档  
-   在 `docs/releases/` 下新增两个文件：
-   - `vX.Y.Z-*.md`
-   - `github-release-vX.Y.Z.md`
+或：
 
-4. 更新入口文档  
-   至少检查这些文件：
-   - `README.md`
-   - `USAGE.md`
-   - `docs/releases/github-repository-metadata.md`
+```bash
+npm run release:minor
+npm run release:major
+```
 
-5. 运行验证
+2. 运行验证
 
 ```bash
 npm test
 ```
 
-6. 提交、打 tag、推送
+3. 提交、打 tag、推送
 
 ```bash
 git add .
@@ -63,7 +86,7 @@ git push origin main
 git push origin vX.Y.Z
 ```
 
-7. 创建 GitHub Release  
+4. 创建 GitHub Release  
    使用 `docs/releases/github-release-vX.Y.Z.md` 作为正文
 
 ## 当前约定

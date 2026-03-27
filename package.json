@@ -20,7 +20,10 @@
     "stop": "node dist/cli.js stop",
     "status": "node dist/cli.js status",
     "doctor": "node dist/cli.js doctor",
-    "doctor:fix": "node dist/cli.js doctor --fix"
+    "doctor:fix": "node dist/cli.js doctor --fix",
+    "release:patch": "npm run build && node dist/release-cli.js patch",
+    "release:minor": "npm run build && node dist/release-cli.js minor",
+    "release:major": "npm run build && node dist/release-cli.js major"
   },
   "keywords": ["claude-code", "wechat", "channel", "agent", "worker"],
   "author": "",
